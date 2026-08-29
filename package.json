@@ -1,0 +1,58 @@
+{
+  "name": "renic-soft-workspace",
+  "version": "1.0.0",
+  "description": "Renic Soft - SaaS License, Quotation & Billing Platform",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build": "npm run build --prefix frontend",
+    "start": "npm run start --prefix backend",
+    "seed": "npm run seed --prefix backend",
+    "icon": "node scripts/gen-icon.mjs",
+    "electron:dev": "electron . --dev",
+    "electron:start": "electron .",
+    "dist": "npm run build --prefix frontend && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.renicsoft.app",
+    "productName": "Renic Soft",
+    "asar": true,
+    "asarUnpack": [
+      "backend",
+      "frontend/dist"
+    ],
+    "includeSubNodeModules": true,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json",
+      "backend/**/*",
+      "frontend/dist/**/*",
+      "icon.ico"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "runAfterFinish": true,
+      "artifactName": "RenicSoft_Setup_${version}.${ext}"
+    }
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "sharp": "^0.34.2"
+  }
+}
