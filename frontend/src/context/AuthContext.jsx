@@ -1,6 +1,15 @@
 import React, { createContext, useContext, useState } from 'react';
 
-const AuthContext = createContext(null);
+// Safe default context to prevent "Cannot destructure property 'user' of 'useAuth(...)' as it is null"
+const defaultAuthContext = {
+  user: null,
+  client: null,
+  login: () => {},
+  logout: () => {},
+  isPlatform: false
+};
+
+const AuthContext = createContext(defaultAuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
@@ -42,4 +51,7 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  return ctx || defaultAuthContext;
+};

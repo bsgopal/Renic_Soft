@@ -8,8 +8,8 @@ import logo from '../assets/logo.png';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
-  const { showSnackbar } = useSnackbar();
+  const { login = () => {} } = useAuth() || {};
+  const { showSnackbar = () => {} } = useSnackbar() || {};
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);

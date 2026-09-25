@@ -1,7 +1,20 @@
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import { Icon } from '../components/icons.jsx';
 
-const SnackbarContext = createContext(null);
+// Safe default context to prevent "Cannot destructure property 'showSnackbar' of 'useSnackbar(...)' as it is null"
+const defaultSnackbarContext = {
+  showSnackbar: (message, type = 'success') => {
+    if (typeof console !== 'undefined') console.log(`[Snackbar ${type}]:`, message);
+  },
+  confirmDialog: async ({ title = 'Are you sure?', message = '', confirmText = 'Confirm' } = {}) => {
+    if (typeof window !== 'undefined') {
+      return window.confirm(`${title}\n\n${message}`);
+    }
+    return Promise.resolve(true);
+  }
+};
+
+const SnackbarContext = createContext(defaultSnackbarContext);
 
 export const SnackbarProvider = ({ children }) => {
   const [snack, setSnack] = useState(null);
@@ -83,4 +96,7 @@ export const SnackbarProvider = ({ children }) => {
   );
 };
 
-export const useSnackbar = () => useContext(SnackbarContext);
+export const useSnackbar = () => {
+  const ctx = useContext(SnackbarContext);
+  return ctx || defaultSnackbarContext;
+};

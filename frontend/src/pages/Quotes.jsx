@@ -53,8 +53,8 @@ const in30d = () => new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().s
 
 export default function Quotes() {
   const navigate = useNavigate();
-  const { isPlatform } = useAuth();
-  const { showSnackbar, confirmDialog } = useSnackbar();
+  const { isPlatform = false } = useAuth() || {};
+  const { showSnackbar = () => {}, confirmDialog = async () => true } = useSnackbar() || {};
   const [quotes, setQuotes] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -6,6 +6,7 @@ import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Licenses from './pages/Licenses.jsx';
+import NetworkManager from './pages/NetworkManager.jsx';
 import Quotes from './pages/Quotes.jsx';
 import QuoteView from './pages/QuoteView.jsx';
 import Billing from './pages/Billing.jsx';
@@ -13,22 +14,38 @@ import InvoiceView from './pages/InvoiceView.jsx';
 import Reports from './pages/Reports.jsx';
 import Notifications from './pages/Notifications.jsx';
 import Settings from './pages/Settings.jsx';
+import ApiCredentialsHub from './pages/ApiCredentialsHub.jsx';
+import CustomerActivityReport from './pages/CustomerActivityReport.jsx';
+import AppDeployments from './pages/AppDeployments.jsx';
+import ApplicationHub from './pages/ApplicationHub.jsx';
+
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 const Protected = ({ children }) => {
-  const { user } = useAuth();
+  const { user } = useAuth() || {};
   if (!user) return <Navigate to="/login" replace />;
-  return <Layout>{children}</Layout>;
+  return (
+    <ErrorBoundary>
+      <Layout>{children}</Layout>
+    </ErrorBoundary>
+  );
 };
 
 export default function App() {
   return (
-    <SnackbarProvider>
-      <AuthProvider>
+    <ErrorBoundary>
+      <SnackbarProvider>
+        <AuthProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<Protected><Dashboard /></Protected>} />
             <Route path="/licenses" element={<Protected><Licenses /></Protected>} />
+            <Route path="/applications" element={<Protected><ApplicationHub /></Protected>} />
+            <Route path="/deployments" element={<Protected><AppDeployments /></Protected>} />
+            <Route path="/credentials" element={<Protected><ApiCredentialsHub /></Protected>} />
+            <Route path="/activity-report" element={<Protected><CustomerActivityReport /></Protected>} />
+            <Route path="/network" element={<Protected><NetworkManager /></Protected>} />
             <Route path="/quotes" element={<Protected><Quotes /></Protected>} />
             <Route path="/quotes/:id" element={<Protected><QuoteView /></Protected>} />
             <Route path="/billing" element={<Protected><Billing /></Protected>} />
@@ -41,5 +58,6 @@ export default function App() {
         </BrowserRouter>
       </AuthProvider>
     </SnackbarProvider>
+  </ErrorBoundary>
   );
 }

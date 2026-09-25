@@ -16,7 +16,7 @@ const TABS = [
 
 export default function Reports() {
   const navigate = useNavigate();
-  const { showSnackbar } = useSnackbar();
+  const { showSnackbar = () => {} } = useSnackbar() || {};
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('pending');

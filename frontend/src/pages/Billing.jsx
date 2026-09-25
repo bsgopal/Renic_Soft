@@ -37,8 +37,8 @@ const today = () => new Date().toISOString().split('T')[0];
 
 export default function Billing() {
   const navigate = useNavigate();
-  const { isPlatform } = useAuth();
-  const { showSnackbar, confirmDialog } = useSnackbar();
+  const { isPlatform = false } = useAuth() || {};
+  const { showSnackbar = () => {}, confirmDialog = async () => true } = useSnackbar() || {};
   const [searchParams, setSearchParams] = useSearchParams();
   const fromQuote = searchParams.get('fromQuote');
 

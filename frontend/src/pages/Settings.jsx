@@ -5,8 +5,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useSnackbar } from '../context/SnackbarContext.jsx';
 
 export default function Settings() {
-  const { isPlatform } = useAuth();
-  const { showSnackbar } = useSnackbar();
+  const { isPlatform = false } = useAuth() || {};
+  const { showSnackbar = () => {} } = useSnackbar() || {};
   const [form, setForm] = useState({
     name: '', address: '', phone: '', email: '', gst: '', paymentDetails: '', termsConditions: ''
   });

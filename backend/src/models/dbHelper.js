@@ -40,6 +40,15 @@ const genId = () => {
 
 const toObjId = (v) => (v && v._id ? String(v._id) : v);
 
+const modelCache = new Map();
+const getModel = async (model) => {
+  if (!modelCache.has(model)) {
+    const mod = await import(`../models/${model}.js`).then((m) => m.default);
+    modelCache.set(model, mod);
+  }
+  return modelCache.get(model);
+};
+
 /**
  * dbHelper - transparent data access layer.
  * Uses Mongoose models when MongoDB is active, otherwise falls back
@@ -52,7 +61,7 @@ export const dbHelper = {
 
   async create(model, data) {
     if (!isUsingMock()) {
-      const Model = await import(`../models/${model}.js`).then((m) => m.default);
+      const Model = await getModel(model);
       return Model.create(data);
     }
     ensureDataDir();
@@ -64,7 +73,7 @@ export const dbHelper = {
 
   async find(model, filter = {}) {
     if (!isUsingMock()) {
-      const Model = await import(`../models/${model}.js`).then((m) => m.default);
+      const Model = await getModel(model);
       return Model.find(filter).lean();
     }
     ensureDataDir();
@@ -76,7 +85,7 @@ export const dbHelper = {
 
   async findOne(model, filter = {}) {
     if (!isUsingMock()) {
-      const Model = await import(`../models/${model}.js`).then((m) => m.default);
+      const Model = await getModel(model);
       return Model.findOne(filter).lean();
     }
     ensureDataDir();
@@ -88,7 +97,7 @@ export const dbHelper = {
 
   async findById(model, id) {
     if (!isUsingMock()) {
-      const Model = await import(`../models/${model}.js`).then((m) => m.default);
+      const Model = await getModel(model);
       return Model.findById(id).lean();
     }
     return this.findOne(model, { _id: id });
@@ -96,7 +105,7 @@ export const dbHelper = {
 
   async findByIdAndUpdate(model, id, updates) {
     if (!isUsingMock()) {
-      const Model = await import(`../models/${model}.js`).then((m) => m.default);
+      const Model = await getModel(model);
       return Model.findByIdAndUpdate(id, updates, { new: true }).lean();
     }
     ensureDataDir();
@@ -110,7 +119,7 @@ export const dbHelper = {
 
   async deleteById(model, id) {
     if (!isUsingMock()) {
-      const Model = await import(`../models/${model}.js`).then((m) => m.default);
+      const Model = await getModel(model);
       return Model.findByIdAndDelete(id);
     }
     ensureDataDir();
@@ -124,7 +133,7 @@ export const dbHelper = {
 
   async countDocuments(model, filter = {}) {
     if (!isUsingMock()) {
-      const Model = await import(`../models/${model}.js`).then((m) => m.default);
+      const Model = await getModel(model);
       return Model.countDocuments(filter);
     }
     ensureDataDir();

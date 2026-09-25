@@ -10,8 +10,8 @@ import { useSnackbar } from '../context/SnackbarContext.jsx';
 export default function InvoiceView() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { client } = useAuth();
-  const { showSnackbar, confirmDialog } = useSnackbar();
+  const { client = null } = useAuth() || {};
+  const { showSnackbar = () => {}, confirmDialog = async () => true } = useSnackbar() || {};
   const [bill, setBill] = useState(null);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({ paymentDetails: '', termsConditions: '' });
