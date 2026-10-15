@@ -55,10 +55,19 @@ export function buildCustomerUrl(client = {}, appSlug = '') {
   const tenant = tenantKeyOf(client);
   if (!tenant) return '';
 
-  // Direct Vercel / Cloud URL Mapping (e.g. SIMPLE_BILLING_URL=https://simple-billing.vercel.app)
+  if (
+    client.fullSaaSDomain &&
+    client.fullSaaSDomain.startsWith('http') &&
+    !client.fullSaaSDomain.includes('renictech.com') &&
+    !client.fullSaaSDomain.includes('lvh.me')
+  ) {
+    return client.fullSaaSDomain;
+  }
+
+  // Direct Vercel / Cloud URL Mapping (e.g. SIMPLE_BILLING_URL=https://simplest-billing.vercel.app)
   const directAppUrls = {
-    billing: process.env.SIMPLE_BILLING_URL,
-    pb: process.env.PAWN_BROKING_URL,
+    billing: process.env.SIMPLE_BILLING_URL || 'https://simplest-billing.vercel.app',
+    pb: process.env.PAWN_BROKING_URL || 'https://pawn-broking.vercel.app',
     pos: process.env.TEXTILE_POS_URL,
     challan: process.env.DELIVERY_CHALLAN_URL,
     wa: process.env.WHATSAPP_AUTOMATION_URL

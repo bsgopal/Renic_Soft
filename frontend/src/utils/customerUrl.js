@@ -37,21 +37,26 @@ export function buildCustomerUrl(client = {}, appSlug = '') {
 
   // Direct Vercel / Cloud URL Mapping (e.g. VITE_PAWN_BROKING_URL / VITE_SIMPLE_BILLING_URL)
   const directAppUrls = {
-    billing: import.meta.env.VITE_SIMPLE_BILLING_URL,
-    pb: import.meta.env.VITE_PAWN_BROKING_URL,
+    billing: import.meta.env.VITE_SIMPLE_BILLING_URL || 'https://simplest-billing.vercel.app',
+    pb: import.meta.env.VITE_PAWN_BROKING_URL || 'https://pawn-broking.vercel.app',
     pos: import.meta.env.VITE_TEXTILE_POS_URL,
     challan: import.meta.env.VITE_DELIVERY_CHALLAN_URL,
     wa: import.meta.env.VITE_WHATSAPP_AUTOMATION_URL
   };
 
+  if (
+    client.fullSaaSDomain &&
+    client.fullSaaSDomain.startsWith('http') &&
+    !client.fullSaaSDomain.includes('renictech.com') &&
+    !client.fullSaaSDomain.includes('lvh.me')
+  ) {
+    return client.fullSaaSDomain;
+  }
+
   const directBase = directAppUrls[slug];
   if (directBase) {
     const cleanBase = directBase.trim().replace(/\/+$/, '');
     return `${cleanBase}?tenant=${tenant}`;
-  }
-
-  if (client.fullSaaSDomain && client.fullSaaSDomain.startsWith('http')) {
-    return client.fullSaaSDomain;
   }
 
   const host = slug ? `${slug}.${tenant}.${CUSTOMER_DOMAIN}` : `${tenant}.${CUSTOMER_DOMAIN}`;
