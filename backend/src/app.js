@@ -34,7 +34,11 @@ const app = express();
 
 // Restore original request URL if rewritten by Vercel serverless function
 app.use((req, res, next) => {
-  if (req.url === '/api/index.js' || req.url.startsWith('/api/index.js')) {
+  if (req.query && req.query.__path !== undefined) {
+    const rawPath = Array.isArray(req.query.__path) ? req.query.__path.join('/') : req.query.__path;
+    req.url = `/${rawPath}`;
+    delete req.query.__path;
+  } else if (req.url === '/api/index.js' || req.url.startsWith('/api/index.js')) {
     const original = req.headers['x-matched-path'] || req.headers['x-forwarded-uri'] || req.url.replace(/^\/api\/index\.js/, '');
     if (original) {
       req.url = original.startsWith('/') ? original : `/${original}`;
