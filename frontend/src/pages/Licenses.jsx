@@ -736,6 +736,14 @@ export default function Licenses() {
   const currentWizardPort = currentWizardApp?.defaultPort || appPortForProduct(wizardForm.softwareProduct);
   const currentWizardBackendPort = backendPortForProduct(wizardForm.softwareProduct);
   const cleanCustomerCode = (wizardForm.customerCode || wizardForm.subdomain || 'client').toLowerCase();
+  const knownFrontendBase = 
+    smartAppSlug === 'pb' ? (import.meta.env.VITE_PAWN_BROKING_URL || 'https://<your-pawnbroking-frontend>.vercel.app') :
+    smartAppSlug === 'billing' ? (import.meta.env.VITE_SIMPLE_BILLING_URL || 'https://<your-simple-billing-frontend>.vercel.app') :
+    '';
+  const cloudTenantUrl = wizardForm.fullSaaSDomain?.startsWith('http') && !wizardForm.fullSaaSDomain.includes('renictech.com') && !wizardForm.fullSaaSDomain.includes('lvh.me')
+    ? wizardForm.fullSaaSDomain
+    : (knownFrontendBase ? `${knownFrontendBase.replace(/\/+$/, '')}?tenant=${cleanCustomerCode}` : `https://<your-frontend>.vercel.app?tenant=${cleanCustomerCode}`);
+
   const localDevUrl = `http://localhost:${currentWizardPort}`;
   const localLvhUrl = `http://${smartAppSlug}.${cleanCustomerCode}.lvh.me:${currentWizardPort}`;
   const localGatewayUrl = `http://${smartAppSlug}.${cleanCustomerCode}.lvh.me:5050`;
@@ -1601,6 +1609,43 @@ export default function Licenses() {
                 </div>
 
                 <div className="space-y-3">
+                  {/* 0. Cloud / Vercel Production Tenant URL */}
+                  <div className="p-3 bg-emerald-50/80 border border-emerald-300 rounded-lg text-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-emerald-950 flex items-center gap-1.5">
+                        🚀 Vercel / Cloud URL (Give this to Client):
+                      </span>
+                      <span className="text-[10px] text-emerald-800 font-semibold px-2 py-0.5 bg-emerald-100 rounded-full">Share with Store</span>
+                    </div>
+                    <p className="text-[11px] text-emerald-900 leading-relaxed">
+                      This is the live URL for your client. Opening this URL connects directly to their isolated database:
+                    </p>
+                    <div className="font-mono text-[11px] text-emerald-950 font-bold bg-white p-2 rounded border border-emerald-300 flex items-center justify-between gap-2">
+                      <span className="truncate">{cloudTenantUrl}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <CopyBtn text={cloudTenantUrl} label="Copy Client URL" />
+                        {wizardForm.ownerMobile && (
+                          <a
+                            href={`https://wa.me/${String(wizardForm.ownerMobile).replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello, your store software is active! Click here to login:\n${cloudTenantUrl}\n\nLogin Mobile: ${wizardForm.ownerMobile}\nPassword: 123456`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2 py-1 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center gap-1 shadow-2xs"
+                          >
+                            WhatsApp 💬
+                          </a>
+                        )}
+                        <a
+                          href={cloudTenantUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                        >
+                          Open ↗
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* 1. Production VPS Route */}
                   <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs">
                     <div className="flex items-center justify-between mb-1">
