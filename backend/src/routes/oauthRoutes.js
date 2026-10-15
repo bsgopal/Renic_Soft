@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
 import Client from '../models/Client.js';
+import { backendPortFor } from '../config/appPorts.js';
 import TenantActivityLog from '../models/TenantActivityLog.js';
 import { protect, authorize } from '../middleware/auth.js';
 
@@ -13,12 +14,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'RenicSoft_Secret_Key_2026_Enterpri
 
 const broadcastOtaUpdateToTenant = async (client) => {
   if (!client) return;
-  const portMap = {
-    'DELIVERY_CHALLAN': 5003,
-    'TEXTILE_POS': 5002,
-    'WA_INSTA_AUTOMATION': 5000
-  };
-  const backendPort = portMap[client.softwareProduct];
+  const backendPort = backendPortFor(client.softwareProduct);
   if (!backendPort) return;
   try {
     await axios.post(`http://localhost:${backendPort}/api/tenant/sync-push`, {
@@ -91,19 +87,38 @@ router.post('/token', async (req, res) => {
     if (!client) {
       try {
         const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        const passedCustomerCode = (req.body?.customerCode || req.query?.customerCode || 'unknown').trim().toLowerCase();
+        const passedClientName = req.body?.clientName || req.query?.clientName || '';
+        
+        let inferredClient = null;
+        if (passedCustomerCode && passedCustomerCode !== 'unknown') {
+          inferredClient = await Client.findOne({ 
+            $or: [
+              { customerCode: passedCustomerCode },
+              { customerCode: new RegExp(`^${passedCustomerCode}$`, 'i') }
+            ]
+          });
+        }
+
+        const effectiveName = inferredClient?.name || passedClientName || 'Unknown Client';
+        const effectiveCode = (inferredClient?.customerCode || passedCustomerCode || 'unknown').toLowerCase();
+
         await TenantActivityLog.create({
-          customerCode: 'UNKNOWN',
+          customerCode: effectiveCode,
           clientId: reqClientId.trim(),
-          softwareProduct: 'ALL',
+          clientName: effectiveName,
+          softwareProduct: inferredClient?.softwareProduct || req.body?.softwareProduct || 'WA_INSTA_AUTOMATION',
           screenName: 'OAUTH_TOKEN_EXCHANGE',
           actionType: 'SECURITY_ALERT',
-          actionDescription: `Unauthorized OAuth Attempt: Non-existent Client ID '${reqClientId.trim()}' attempted token exchange from IP ${ipAddress}. Access rejected.`,
+          actionDescription: `Unauthorized OAuth Attempt: Non-existent Client ID '${reqClientId.trim()}' attempted from client '${effectiveName}' (Code: ${effectiveCode}) from IP ${ipAddress}. Access rejected.`,
           userName: 'OAuth Guard',
           userRole: 'system',
           ipAddress: String(ipAddress),
           userAgent: String(req.headers['user-agent'] || '').slice(0, 200)
         });
-      } catch (logErr) {}
+      } catch (logErr) {
+        console.error('[OAuth Guard] Error creating security alert log:', logErr.message);
+      }
       return res.status(401).json({
         error: 'invalid_client',
         error_description: 'Client authentication failed: Client ID not found'
@@ -125,40 +140,49 @@ router.post('/token', async (req, res) => {
       });
     }
 
-    // Verify secret: check hashed secret, plaintext, or suffix/trimmed match
-    const cleanReqSecret = reqClientSecret.trim();
+    // Verify secret — EXACT match only (timing-safe).
+    const cleanReqSecret = String(reqClientSecret || '').trim();
+    const secretEquals = (stored) => {
+      if (typeof stored !== 'string' || stored.length === 0) return false;
+      const a = Buffer.from(stored, 'utf8');
+      const b = Buffer.from(cleanReqSecret, 'utf8');
+      if (a.length === 0 || b.length === 0 || a.length !== b.length) return false;
+      return crypto.timingSafeEqual(a, b);
+    };
+
     let isSecretValid = false;
 
     if (client.clientSecretHash) {
-      isSecretValid = await bcrypt.compare(cleanReqSecret, client.clientSecretHash);
+      isSecretValid = Boolean(cleanReqSecret) && (await bcrypt.compare(cleanReqSecret, client.clientSecretHash));
     }
-    if (!isSecretValid && client.clientSecret) {
-      isSecretValid = client.clientSecret === cleanReqSecret || 
-                      client.clientSecret.endsWith(cleanReqSecret) ||
-                      cleanReqSecret.endsWith(client.clientSecret);
+    if (!isSecretValid) {
+      isSecretValid = secretEquals(client.clientSecret);
     }
-    if (!isSecretValid && client.apiSecretKey) {
-      isSecretValid = client.apiSecretKey === cleanReqSecret || 
-                      client.apiSecretKey.endsWith(cleanReqSecret) ||
-                      cleanReqSecret.endsWith(client.apiSecretKey);
+    if (!isSecretValid) {
+      isSecretValid = secretEquals(client.apiSecretKey);
     }
 
     if (!isSecretValid) {
       try {
         const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        const clientDisplayName = client.name || client.companyName || client.customerCode;
+        const custCode = (client.customerCode || 'unknown').toLowerCase();
         await TenantActivityLog.create({
-          customerCode: client.customerCode,
+          customerCode: custCode,
           clientId: client.clientId,
-          softwareProduct: client.softwareProduct || 'ALL',
+          clientName: clientDisplayName,
+          softwareProduct: client.softwareProduct || 'WA_INSTA_AUTOMATION',
           screenName: 'OAUTH_TOKEN_EXCHANGE',
           actionType: 'SECURITY_ALERT',
-          actionDescription: `Unauthorized OAuth Attempt: Invalid Client Secret provided for customer '${client.customerCode}' (Client ID: ${client.clientId}) from IP ${ipAddress}. Access rejected.`,
+          actionDescription: `Unauthorized OAuth Attempt: Invalid Client Secret entered for client "${clientDisplayName}" (Code: ${custCode}, Client ID: ${client.clientId}) from IP ${ipAddress}. Access rejected.`,
           userName: 'OAuth Guard',
           userRole: 'system',
           ipAddress: String(ipAddress),
           userAgent: String(req.headers['user-agent'] || '').slice(0, 200)
         });
-      } catch (logErr) {}
+      } catch (logErr) {
+        console.error('[OAuth Guard] Error creating security alert log:', logErr.message);
+      }
       return res.status(401).json({
         error: 'invalid_client',
         error_description: 'Client authentication failed: Invalid Client Secret'

@@ -13,7 +13,7 @@ const quoteItemSchema = new mongoose.Schema({
 });
 
 const quotationSchema = new mongoose.Schema({
-  clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
+  clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: false },
   quoteNumber: { type: String, required: true, unique: true },
   customerName: { type: String, default: '' },
   customerPhone: { type: String, default: '' },

@@ -7,6 +7,21 @@ import { notifyProductionActivated } from '../utils/whatsappNotifier.js';
 const TRIAL_COLLECTIONS = [
   'users',
   'clients',
+  'tenant_settings',
+  'settings',
+  'appointmentsettings',
+  'appointmentservices',
+  'appointmentstaffs',
+  'appointments',
+  'appointmentcustomers',
+  'campaigns',
+  'messages',
+  'templates',
+  'quickreplies',
+  'rules',
+  'workflows',
+  'tags',
+  'contacts',
   'products',
   'stockunits',
   'masterdatas',
@@ -58,13 +73,8 @@ export async function convertTrialToProduction(clientId, options = {}) {
       const sourceCol = sourceDb.collection(colName);
       const targetCol = targetDb.collection(colName);
 
-      // Find documents matching this client
-      const docs = await sourceCol.find({
-        $or: [
-          { clientId: client._id },
-          { clientId: client._id.toString() }
-        ]
-      }).toArray();
+      // Read all records from the isolated trial DB
+      const docs = await sourceCol.find({}).toArray();
 
       if (docs.length > 0) {
         // Upsert or insert into target
@@ -79,33 +89,7 @@ export async function convertTrialToProduction(clientId, options = {}) {
     }
   }
 
-  // 2. Ensure store Client document exists in targetDb
-  try {
-    const targetClients = targetDb.collection('clients');
-    const existingStore = await targetClients.findOne({});
-    if (!existingStore) {
-      await targetClients.insertOne({
-        name: client.name,
-        phone: client.adminMobile || client.contact || '',
-        contact: client.contact || client.ownerEmail || '',
-        planTier,
-        licenseStatus: 'active',
-        maxFloors: 99,
-        maxUsers: 999,
-        maxProducts: 999999,
-        screenPermissions: client.screenPermissions || {},
-        stockConfig: client.stockConfig || {},
-        billingConfig: client.billingConfig || {},
-        pricingConfig: client.pricingConfig || {},
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-    }
-  } catch (err) {
-    console.warn('[Trial Migration] Target client store ensure warning:', err.message);
-  }
-
-  // 3. Update Client in Renic_Soft
+  // 2. Update Client in Renic_Soft Master HQ
   const now = new Date();
   const newLicenseEnd = new Date(now.getTime() + parseInt(subscriptionDays) * 24 * 60 * 60 * 1000);
 
@@ -123,10 +107,21 @@ export async function convertTrialToProduction(clientId, options = {}) {
 
   await client.save();
 
+  // 3. Drop temporary trial database if it was a dedicated sandbox
+  if (sourceDbName.startsWith('renic_trial_') && sourceDbName !== targetDbName) {
+    try {
+      await sourceDb.dropDatabase();
+      console.log(`\x1b[33m[Trial Cleanup]\x1b[0m Dropped temporary sandbox '${sourceDbName}'`);
+    } catch (dropErr) {
+      console.warn('[Trial Cleanup Warning] Failed to drop trial sandbox:', dropErr.message);
+    }
+  }
+
   // 4. Invalidate Gateway Proxy Cache so incoming traffic instantly connects
   if (client.customerCode) invalidateProxyCache(client.customerCode.toLowerCase());
   if (client.subdomain) invalidateProxyCache(client.subdomain.toLowerCase());
   if (client.shopSlug) invalidateProxyCache(client.shopSlug.toLowerCase());
+  invalidateProxyCache();
 
   // 5. Dispatch celebration WhatsApp alert
   try {
@@ -139,10 +134,13 @@ export async function convertTrialToProduction(clientId, options = {}) {
 
   return {
     success: true,
+    message: `Client successfully converted to Production! Tenant database: ${targetDbName}`,
     customerCode,
     targetDbName,
+    sourceDbName,
     totalRecordsMigrated,
     migrationSummary,
-    newLicenseEnd
+    newLicenseEnd,
+    client
   };
 }

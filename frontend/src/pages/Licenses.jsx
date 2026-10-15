@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import api, { downloadFile } from '../api.js';
+import api from '../api.js';
+import { buildCustomerUrl, appSlugForProduct, appPortForProduct, backendPortForProduct } from '../utils/customerUrl.js';
 import Modal from '../components/Modal.jsx';
-import Badge from '../components/Badge.jsx';
+import SplitDivider from '../components/SplitDivider.jsx';
 import { Icon } from '../components/icons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSnackbar } from '../context/SnackbarContext.jsx';
@@ -10,7 +11,7 @@ import { useSnackbar } from '../context/SnackbarContext.jsx';
 const DEFAULT_SHOP = {
   name: '',
   customerCode: '',
-  softwareProduct: 'TEXTILE_POS',
+  softwareProduct: 'WA_INSTA_AUTOMATION',
   subdomain: '',
   customDomain: '',
   fullSaaSDomain: '',
@@ -26,6 +27,10 @@ const DEFAULT_SHOP = {
   activateImmediately: true,
   isTrial: false,
   trialDays: 7,
+  solutionMode: '',
+  solutionModes: [],
+  businessType: '',
+  customTerminology: {},
   stockConfig: {
     entryMode: 'simple',
     enableSizes: false,
@@ -40,13 +45,31 @@ const DEFAULT_SHOP = {
     trackProfit: true,
     allowStaffProfitView: false
   },
-  targetIp: '127.0.0.1',
-  assignedPort: 5174,
-  connectionType: 'PORT_FORWARD_ROUTER',
   oauthEnforced: true,
   clientId: '',
   clientSecret: '',
   screenPermissions: {},
+  fieldConfig: {
+    billing: {
+      excelImport: { visible: true, required: false }
+    },
+    stockAdd: {
+      supplier: { visible: true, required: true },
+      category: { visible: true, required: true },
+      subCategory: { visible: true, required: true },
+      productName: { visible: true, required: true }
+    },
+    stockImport: {
+      // 'perUnit'      → qty 10 mints 10 SKU IDs / 10 barcodes (one item = one barcode)
+      // 'singleBarcode' → qty 10 keeps 1 SKU / 1 barcode holding 10 units
+      barcodeMode: { value: 'perUnit' }
+    }
+  },
+  branchConfig: {
+    mode: 'SINGLE',
+    maxBranches: 1,
+    allowInterBranchTransfer: false
+  },
   featurePermissions: {
     quickReplies: true,
     workflows: true,
@@ -56,71 +79,151 @@ const DEFAULT_SHOP = {
     bulkBroadcast: true,
     aiAgent: false,
     metaCloudApi: true,
-    exportReports: true
+    exportReports: true,
+    // Enterprise Pawn Broking Master Entitlements
+    allowPartialRelease: false,
+    allowRePledge: false,
+    enableBlacklistShield: true,
+    allowCustomPrintTemplates: true
   },
   whatsappSenderMode: 'META',
   dockerThrottleSeconds: 6
 };
 
-const DURATION_OPTIONS = [
-  { days: 7, label: '+7 Days (Grace Period)', badge: 'Grace' },
-  { days: 30, label: '+30 Days (1 Month)', badge: '1 Mo' },
-  { days: 90, label: '+90 Days (3 Months)', badge: 'Quarter' },
-  { days: 180, label: '+180 Days (6 Months)', badge: 'Half Year' },
-  { days: 365, label: '+365 Days (1 Year)', badge: '1 Year' },
-  { days: -1, label: '-1 Day (Test Expiry)', badge: 'Test' }
+const WIZARD_SECTIONS = [
+  { id: 'sec-identity', label: '1. Customer Profile', sub: 'Store Identity & Admin' },
+  { id: 'sec-security', label: '2. Security & OAuth 2.0', sub: 'Machine Credentials' },
+  { id: 'sec-routing', label: '3. App & Smart Routing', sub: 'Subdomain Routing' },
+  { id: 'sec-screens', label: '4. Feature Governance', sub: '100% Pre-Selected SaaS' },
+  { id: 'sec-deployment', label: '5. Engine & Diagnostic', sub: 'Pre-Flight & Launch' }
 ];
 
-const WIZARD_STEPS = [
-  { id: 'security', stepNum: 1, title: 'Security First', subtitle: 'OAuth 2.0 Machine Keys', icon: 'key' },
-  { id: 'identity', stepNum: 2, title: 'Customer Profile', subtitle: 'Store Identity & Admin', icon: 'store' },
-  { id: 'routing', stepNum: 3, title: 'App & Smart URL', subtitle: 'Subdomain Routing', icon: 'network' },
-  { id: 'screens', stepNum: 4, title: 'Feature Governance', subtitle: '100% Pre-Selected SaaS', icon: 'dashboard' },
-  { id: 'deployment', stepNum: 5, title: 'Engine & Pre-Flight', subtitle: 'Diagnostic & Launch', icon: 'license' }
-];
+export function CopyBtn({ text, label = 'Copy', className = '', showLabel = true }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e) => {
+    e.stopPropagation();
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className={`inline-flex items-center justify-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg transition ${
+        copied
+          ? 'bg-emerald-600 text-white shadow-xs'
+          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+      } ${className}`}
+      title={copied ? "Copied to clipboard!" : "Copy to clipboard"}
+    >
+      <span>{copied ? '✓' : '📋'}</span>
+      {showLabel && <span>{copied ? 'Copied!' : label}</span>}
+    </button>
+  );
+}
 
 export default function Licenses() {
   const { user = null } = useAuth() || {};
   const { showSnackbar = () => {}, confirmDialog = async () => true } = useSnackbar() || {};
   const [clients, setClients] = useState([]);
   const [apps, setApps] = useState([]);
+  // Applications a customer can actually be licensed to run. RENIC_SOFT (the
+  // operator's own `hq` console) carries assignable:false in the registry, so
+  // it is never offered as a product. Filtering on the flag rather than
+  // hardcoding an appCode blocklist keeps this correct for every app that is
+  // registered in Renic Soft after this code was written.
+  const assignableApps = apps.filter((a) => a.assignable !== false);
+
+  /**
+   * Application slug resolution.
+   *
+   * Reads the Applications registry in Renic Soft rather than a hardcoded
+   * product list, so registering a new application there (new appCode, new
+   * name, new urlSlug) immediately makes it selectable here and resolves to
+   * its correct URL slug — no code change required.
+   */
+  const appSlugFor = (appCode) => {
+    const found = apps.find((a) => a.appCode === appCode);
+    return String(found?.urlSlug || appSlugForProduct(appCode) || '').trim().toLowerCase();
+  };
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState(null);
-  const [activatingId, setActivatingId] = useState(null);
   const [selectedClient, setSelectedClient] = useState(null);
   const [togglingLockId, setTogglingLockId] = useState(null);
 
-  // Extend Menu Dropdown state
-  const [activeExtendMenuId, setActiveExtendMenuId] = useState(null);
-  const extendMenuRef = useRef(null);
-
-  // Close extend dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (extendMenuRef.current && !extendMenuRef.current.contains(e.target)) {
-        setActiveExtendMenuId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Wizard State (Strict 5-Step Multi-Tenant Cloud Provisioning Flow)
+  // Panel State (Two-Column Layout)
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardMode, setWizardMode] = useState('create'); // 'create' | 'edit'
-  const [wizardStep, setWizardStep] = useState('security'); // 'security' | 'identity' | 'routing' | 'screens' | 'deployment'
   const [wizardForm, setWizardForm] = useState(DEFAULT_SHOP);
   const [wizardSubmitting, setWizardSubmitting] = useState(false);
   const [showWizardSecret, setShowWizardSecret] = useState(false);
+  const [showOwnerPassword, setShowOwnerPassword] = useState(false);
+
+  // Split Panel & Anchor Navigation
+  const [isPanelMaximized, setIsPanelMaximized] = useState(false);
+  const [splitPercent, setSplitPercent] = useState(30);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const newPercent = ((e.clientX - rect.left) / rect.width) * 100;
+      if (newPercent >= 20 && newPercent <= 80) {
+        setSplitPercent(newPercent);
+      }
+    };
+    const handleMouseUp = () => {
+      if (isDragging) setIsDragging(false);
+    };
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+  const [activeTabSection, setActiveTabSection] = useState(0);
+  const [showFilters, setShowFilters] = useState(false);
+  const detailScrollRef = useRef(null);
+
+  // Smooth scroll to anchor section inside right object page
+  const handleScrollToSection = (index, sectionId) => {
+    setActiveTabSection(index);
+    const element = document.getElementById(sectionId);
+    if (element && detailScrollRef.current) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Auto-detect active section while scrolling right object panel
+  const handlePanelScroll = () => {
+    if (!detailScrollRef.current) return;
+    const sections = [
+      'sec-identity',
+      'sec-security',
+      'sec-routing',
+      'sec-screens',
+      'sec-deployment'
+    ];
+    const scrollPos = detailScrollRef.current.scrollTop + 140;
+    for (let i = sections.length - 1; i >= 0; i--) {
+      const el = document.getElementById(sections[i]);
+      if (el && el.offsetTop <= scrollPos) {
+        setActiveTabSection(i);
+        break;
+      }
+    }
+  };
 
   // Pre-Flight Diagnostic State
   const [preflightLoading, setPreflightLoading] = useState(false);
   const [preflightResults, setPreflightResults] = useState(null);
-
-  // Application Catalog (PaaS Hub) Modal state
-  const [appModalOpen, setAppModalOpen] = useState(false);
-  const [syncingAppCode, setSyncingAppCode] = useState(null);
-  const [extractingAppCode, setExtractingAppCode] = useState(null);
 
   // OAuth Modal state
   const [oauthModalOpen, setOauthModalOpen] = useState(false);
@@ -128,11 +231,38 @@ export default function Licenses() {
   const [oauthLoading, setOauthLoading] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
   const [createdCreds, setCreatedCreds] = useState(null);
+  // The client secret is masked by default in the handover modal; only the
+  // operator's explicit Reveal click unmasks it.
+  const [revealSecret, setRevealSecret] = useState(false);
 
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [productFilter, setProductFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // Convert Trial to Production Modal State
+  const [convertModalOpen, setConvertModalOpen] = useState(false);
+  const [clientToConvert, setClientToConvert] = useState(null);
+  const [convertSubmitting, setConvertSubmitting] = useState(false);
+  const [convertForm, setConvertForm] = useState({
+    planTier: 'pro',
+    billingCycle: '1_YEAR',
+    subscriptionDays: 365,
+    paymentReference: ''
+  });
+
+  const [availablePlanTiers, setAvailablePlanTiers] = useState([]);
+
+  const fetchPlanTiers = useCallback(async () => {
+    try {
+      const res = await api.get('/plan-tiers');
+      if (res.data?.success) {
+        setAvailablePlanTiers(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load plan tiers:', err);
+    }
+  }, []);
 
   const fetchApps = useCallback(async () => {
     try {
@@ -147,29 +277,21 @@ export default function Licenses() {
     try {
       setLoading(true);
       const res = await api.get('/clients');
-      setClients(Array.isArray(res.data) ? res.data : []);
+      const clientList = Array.isArray(res.data) ? res.data : [];
+      setClients(clientList);
+      // No auto-select so initial view starts as 1-column full width
     } catch (err) {
       showSnackbar(err.response?.data?.message || 'Failed to load licenses', 'error');
     } finally {
       setLoading(false);
     }
-  }, [showSnackbar]);
+  }, [showSnackbar, wizardOpen, selectedClient]);
 
   useEffect(() => {
     fetchData();
     fetchApps();
-  }, [fetchData, fetchApps]);
-
-  const metrics = {
-    total: clients.length,
-    active: clients.filter((c) => c.licenseStatus === 'active').length,
-    oauthEnforced: clients.filter((c) => c.oauthEnforced).length,
-    expiringSoon: clients.filter((c) => {
-      const isExpired = new Date(c.licenseEnd) < new Date();
-      const daysLeft = Math.ceil((new Date(c.licenseEnd) - new Date()) / (24 * 3600 * 1000));
-      return !isExpired && daysLeft <= 7;
-    }).length
-  };
+    fetchPlanTiers();
+  }, [fetchData, fetchApps, fetchPlanTiers]);
 
   // Helper to extract unified feature list for an app
   const getAppFeatures = useCallback((targetApp) => {
@@ -188,277 +310,284 @@ export default function Licenses() {
       return targetApp.screens.map(s => ({
         key: s.key,
         label: s.label,
-        category: s.category || 'General',
-        path: s.path || '',
+        category: 'App Screen',
+        path: s.path || `/${s.key}`,
         description: s.description || '',
         defaultEnabled: true
       }));
     }
-    return [];
+    return [
+      { key: 'dashboard', label: 'Executive Dashboard & Analytics', category: 'Analytics', defaultEnabled: true },
+      { key: 'billing', label: 'POS Terminal & Instant Invoicing', category: 'Billing', defaultEnabled: true },
+      { key: 'inventory', label: 'Live Inventory & Multi-Variant Stock', category: 'Stock', defaultEnabled: true },
+      { key: 'customers', label: 'Customer Directory & Ledger (CRM)', category: 'CRM', defaultEnabled: true },
+      { key: 'broadcast', label: 'Promotional WhatsApp Broadcasts', category: 'Marketing', defaultEnabled: true },
+      { key: 'reports', label: 'Financial Audit & Tax Reports (GST)', category: 'Finance', defaultEnabled: true }
+    ];
   }, []);
 
-  // Initialize 100% Pre-Checked permissions
-  const initDefault100PercentPermissions = useCallback((targetApp) => {
-    const list = getAppFeatures(targetApp);
+  // Pre-check 100% of features for a newly created client
+  const initDefault100PercentPermissions = (targetApp) => {
+    const features = getAppFeatures(targetApp);
     const perms = {};
-    list.forEach(item => {
-      perms[item.key] = true; // 100% PRE-CHECKED BY DEFAULT
+    features.forEach(f => {
+      perms[f.key] = true;
     });
     return perms;
-  }, [getAppFeatures]);
+  };
 
-  // Open Create Customer Wizard (Step 1 Security First)
+  // Auto-generate Subdomain & Keys on name change
+  const handleNameChange = (nameVal) => {
+    const slug = nameVal.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15);
+    const shortCode = nameVal.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 12);
+
+    setWizardForm(prev => {
+      const updated = {
+        ...prev,
+        name: nameVal,
+        subdomain: prev.subdomain || slug,
+        customerCode: prev.customerCode || shortCode,
+        ownerEmail: (!prev.ownerEmail || prev.ownerEmail.startsWith('admin@')) && slug ? `admin@${slug}.com` : prev.ownerEmail
+      };
+      if (!updated.clientId && shortCode) {
+        const rand = Math.random().toString(36).substring(2, 8);
+        updated.clientId = `renic_${shortCode}_${rand}`;
+      }
+      return updated;
+    });
+  };
+
+  // Generate a random secure owner password
+  const handleGenerateOwnerPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$';
+    let pwd = 'Rnc@';
+    for (let i = 0; i < 8; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setWizardForm(prev => ({ ...prev, ownerPassword: pwd }));
+    showSnackbar('Generated new secure Admin Password', 'info');
+  };
+
+  // Generate high-entropy secret key based on Customer ID / Code
+  const handleGenerateNewSecret = (customCode) => {
+    const rawCode = customCode || wizardForm.customerCode || wizardForm.subdomain || 'client';
+    const cleanCode = rawCode.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 15) || 'client';
+
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*';
+    let randSecret = `rnc_sec_${cleanCode}_`;
+    for (let i = 0; i < 28; i++) {
+      randSecret += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const randId = `renic_${cleanCode}_${Math.random().toString(36).substring(2, 8)}`;
+
+    setWizardForm(prev => ({
+      ...prev,
+      customerCode: cleanCode,
+      clientId: randId,
+      clientSecret: randSecret
+    }));
+    showSnackbar(`Generated OAuth 2.0 Credentials (Client ID: ${randId}) from Customer ID: ${cleanCode}`, 'success');
+  };
+
+  // Open Wizard in Create Mode
   const handleOpenCreateWizard = () => {
-    const defaultCode = 'TX' + Math.floor(10 + Math.random() * 90);
-    const initialClientId = 'rnc_cli_' + defaultCode.toLowerCase() + '_' + Math.random().toString(36).substring(2, 8);
-    const initialClientSecret = 'rnc_sec_' + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
-    const defaultApp = apps.find(a => a.appCode === 'TEXTILE_POS') || apps[0];
-    const initialPerms = initDefault100PercentPermissions(defaultApp);
+    const defaultApp = apps.find(a => a.appCode === 'WA_INSTA_AUTOMATION') || apps.find(a => a.assignable !== false) || apps[0] || { appCode: 'WA_INSTA_AUTOMATION', defaultPort: 5000 };
+    const defaultMode = defaultApp.solutionModes?.[0];
+    const defaultBt = defaultMode?.businessTypes?.[0];
+    const defaultModes = defaultMode ? [defaultMode.modeKey] : [];
+
+    const appFeatures = getAppFeatures(defaultApp);
+    const defaultPerms = {};
+    if (defaultMode?.defaultScreenKeys && defaultMode.defaultScreenKeys.length > 0) {
+      appFeatures.forEach(f => {
+        defaultPerms[f.key] = defaultMode.defaultScreenKeys.includes(f.key);
+      });
+    } else {
+      appFeatures.forEach(f => { defaultPerms[f.key] = true; });
+    }
+
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*';
+    let randSecret = 'rnc_sec_';
+    for (let i = 0; i < 32; i++) {
+      randSecret += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const randPwd = `Renic@${Math.floor(1000 + Math.random() * 9000)}`;
 
     setWizardMode('create');
-    setWizardStep('security');
+    setSelectedClient(null);
     setPreflightResults(null);
+    setActiveTabSection(0);
     setWizardForm({
       ...DEFAULT_SHOP,
-      customerCode: defaultCode,
-      subdomain: defaultCode.toLowerCase(),
-      softwareProduct: defaultApp ? defaultApp.appCode : 'TEXTILE_POS',
-      assignedPort: defaultApp ? defaultApp.defaultPort : 5174,
-      clientId: initialClientId,
-      clientSecret: initialClientSecret,
-      oauthEnforced: true,
-      screenPermissions: initialPerms
+      softwareProduct: defaultApp.appCode,
+      assignedPort: defaultApp.defaultPort || 5000,
+      solutionModes: defaultModes,
+      solutionMode: defaultModes.join(','),
+      businessType: defaultBt?.typeKey || '',
+      customTerminology: defaultBt || {},
+      screenPermissions: defaultPerms,
+      clientSecret: randSecret,
+      clientId: `rnc_cli_tenant_${Math.random().toString(36).substring(2, 7)}`,
+      ownerPassword: randPwd
     });
-    setShowWizardSecret(false);
     setWizardOpen(true);
   };
 
-  // Open Edit Customer Wizard
-  const handleOpenEditWizard = (c) => {
-    setSelectedClient(c);
+  // Open Wizard in Edit Mode
+  const handleOpenEditWizard = (clientObj) => {
+    setSelectedClient(clientObj);
     setWizardMode('edit');
-    setWizardStep('security');
-    setShowWizardSecret(false);
     setPreflightResults(null);
+    setActiveTabSection(0);
 
-    const clientPort = c.portForwarding?.assignedPort || c.assignedPort || (
-      c.softwareProduct === 'TEXTILE_POS' ? 5174 : c.softwareProduct === 'DELIVERY_CHALLAN' ? 5176 : 5173
-    );
-
-    const matchedApp = apps.find(a => a.appCode === c.softwareProduct);
-    const defaultPerms = initDefault100PercentPermissions(matchedApp);
-    const existingPerms = c.screenPermissions || {};
+    const targetApp = apps.find(a => a.appCode === clientObj.softwareProduct);
+    const existingPerms = clientObj.screenPermissions || clientObj.featurePermissions || {};
+    const defaultPerms = initDefault100PercentPermissions(targetApp);
     const mergedPerms = { ...defaultPerms, ...existingPerms };
 
+    const selectedModes = Array.isArray(clientObj.solutionModes) && clientObj.solutionModes.length > 0
+      ? clientObj.solutionModes
+      : (clientObj.solutionMode ? clientObj.solutionMode.split(',').map(s => s.trim()).filter(Boolean) : []);
+
     setWizardForm({
-      _id: c._id,
-      name: c.name || '',
-      customerCode: c.customerCode || c.subdomain?.toUpperCase() || '',
-      shopSlug: c.shopSlug || c.subdomain || '',
-      subdomain: c.subdomain || '',
-      customDomain: c.customDomain || '',
-      fullSaaSDomain: c.fullSaaSDomain || '',
-      softwareProduct: c.softwareProduct || 'TEXTILE_POS',
-      planTier: c.planTier || 'pro',
-      licenseStatus: c.licenseStatus || 'active',
-      licenseEnd: c.licenseEnd ? c.licenseEnd.slice(0, 10) : '',
-      billingCycle: c.billingCycle || '3_MONTHS',
-      targetIp: c.portForwarding?.targetIp || '127.0.0.1',
-      assignedPort: clientPort,
-      connectionType: c.portForwarding?.connectionType || 'PORT_FORWARD_ROUTER',
-      pendingOwnerName: c.pendingOwnerName || c.name || '',
-      pendingOwnerEmail: c.pendingOwnerEmail || '',
-      pendingOwnerMobile: c.pendingOwnerMobile || c.contact || '',
-      pendingOwnerPassword: '',
-      oauthEnforced: c.oauthEnforced !== undefined ? Boolean(c.oauthEnforced) : true,
-      clientId: c.clientId || ('rnc_cli_' + (c.customerCode || 'tenant').toLowerCase() + '_' + Math.random().toString(36).substring(2, 8)),
-      clientSecret: c.clientSecret || '',
+      _id: clientObj._id || clientObj.id,
+      name: clientObj.name || '',
+      customerCode: clientObj.customerCode || clientObj.subdomain?.toUpperCase() || '',
+      softwareProduct: clientObj.softwareProduct || 'WA_INSTA_AUTOMATION',
+      solutionModes: selectedModes,
+      solutionMode: clientObj.solutionMode || selectedModes.join(','),
+      businessType: clientObj.businessType || '',
+      customTerminology: clientObj.customTerminology || {},
+      subdomain: clientObj.subdomain || '',
+      customDomain: clientObj.customDomain || '',
+      fullSaaSDomain: clientObj.fullSaaSDomain || '',
+      gstNumber: clientObj.gstNumber || '',
+      address: clientObj.address || '',
+      contact: clientObj.contact || clientObj.pendingOwnerName || '',
+      planTier: clientObj.planTier || 'pro',
+      billingCycle: clientObj.billingCycle || '3_MONTHS',
+      licenseDurationDays: 90,
+      licenseStatus: clientObj.licenseStatus || 'active',
+      ownerEmail: clientObj.ownerEmail || clientObj.pendingOwnerEmail || '',
+      ownerMobile: clientObj.ownerMobile || clientObj.pendingOwnerMobile || '',
+      pendingOwnerEmail: clientObj.pendingOwnerEmail || clientObj.ownerEmail || '',
+      pendingOwnerMobile: clientObj.pendingOwnerMobile || clientObj.ownerMobile || '',
+      ownerPassword: '',
+      isTrial: clientObj.isTrial || false,
+      trialDays: clientObj.trialDays || 7,
+      databaseName: clientObj.databaseName || '',
+      stockConfig: clientObj.stockConfig || DEFAULT_SHOP.stockConfig,
+      billingConfig: clientObj.billingConfig || DEFAULT_SHOP.billingConfig,
+      pricingConfig: clientObj.pricingConfig || DEFAULT_SHOP.pricingConfig,
+      targetIp: clientObj.portForwarding?.targetIp || clientObj.targetIp || '127.0.0.1',
+      assignedPort: clientObj.portForwarding?.assignedPort || clientObj.assignedPort || targetApp?.defaultPort || 5000,
+      connectionType: clientObj.portForwarding?.connectionType || clientObj.connectionType || 'PORT_FORWARD_ROUTER',
+      oauthEnforced: clientObj.oauthEnforced !== undefined ? clientObj.oauthEnforced : true,
+      clientId: clientObj.clientId || '',
+      clientSecret: clientObj.clientSecret || '',
       screenPermissions: mergedPerms,
-      featurePermissions: c.featurePermissions || {},
-      isTrial: Boolean(c.isTrial),
-      trialDays: c.trialDays || 7,
-      databaseName: c.databaseName || '',
-      stockConfig: c.stockConfig || { entryMode: 'simple', enableSizes: false, enableColors: false, enableMeters: false, enableBulkCsv: true },
-      billingConfig: c.billingConfig || { discountMode: 'both' },
-      pricingConfig: c.pricingConfig || { trackProfit: true, allowStaffProfitView: false },
-      whatsappSenderMode: c.whatsappSenderMode || 'META',
-      dockerThrottleSeconds: c.dockerThrottleSeconds || 6
+      branchConfig: clientObj.branchConfig || DEFAULT_SHOP.branchConfig,
+      featurePermissions: { ...DEFAULT_SHOP.featurePermissions, ...(clientObj.featurePermissions || {}) },
+      whatsappSenderMode: clientObj.whatsappSenderMode || 'META',
+      dockerThrottleSeconds: clientObj.dockerThrottleSeconds || 6
     });
+
     setWizardOpen(true);
   };
 
-  const handleNameChange = (val) => {
-    const slug = val.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const code = val.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
-    setWizardForm((prev) => ({
-      ...prev,
-      name: val,
-      customerCode: prev.customerCode === '' || prev.customerCode === prev.name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) ? code : prev.customerCode,
-      subdomain: prev.subdomain === '' || prev.subdomain === prev.name.toLowerCase().replace(/[^a-z0-9]/g, '') ? slug : prev.subdomain
-    }));
-  };
-
-  const handleGenerateNewSecret = () => {
-    const prefix = (wizardForm.customerCode || 'cli').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 6);
-    const newId = 'rnc_cli_' + prefix + '_' + Math.random().toString(36).substring(2, 8);
-    const newSec = 'rnc_sec_' + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
-    setWizardForm(prev => ({ ...prev, clientId: newId, clientSecret: newSec }));
-    showSnackbar('Generated new RFC 6749 Client ID & HMAC Secret!', 'info');
-  };
-
-  // Run Pre-Flight Diagnostic Check
+  // Automated Pre-Flight Check Probe
   const runPreflightCheck = async () => {
     try {
       setPreflightLoading(true);
       const res = await api.post('/licenses/preflight-check', {
         customerCode: wizardForm.customerCode,
-        subdomain: wizardForm.subdomain || wizardForm.customerCode?.toLowerCase(),
-        port: wizardForm.assignedPort,
-        softwareProduct: wizardForm.softwareProduct
+        shopSlug: wizardForm.subdomain || wizardForm.customerCode,
+        softwareProduct: wizardForm.softwareProduct,
+        whatsappSenderMode: wizardForm.whatsappSenderMode,
+        excludeId: wizardMode === 'edit' ? (wizardForm._id || selectedClient?._id) : undefined
       });
       setPreflightResults(res.data);
-      if (res.data.status === 'READY') {
-        showSnackbar('Pre-flight diagnostic passed! Infrastructure is ready to deploy.', 'success');
+      if (res.data.passed) {
+        showSnackbar('✓ Live Diagnostic Probe: 100% Passed! Ready to Route.', 'success');
       } else {
-        showSnackbar('Pre-flight warnings detected. Check details before deploying.', 'warning');
+        const msg = !res.data.checks?.subdomainUnique 
+          ? (res.data.checks?.subdomainMessage || 'Customer code already taken!')
+          : (!res.data.checks?.frontendReachable 
+            ? `Port ${res.data.checks?.frontendPort || ''} offline! Please start the frontend server.`
+            : `Backend port ${res.data.checks?.backendPort || ''} offline! Please start the backend server.`);
+        showSnackbar(`⚠️ Diagnostics Warning: ${msg}`, 'warning');
       }
     } catch (err) {
-      showSnackbar(err.response?.data?.message || 'Pre-flight check probe failed', 'error');
+      const errMessage = err.response?.data?.message || err.message || 'Diagnostic connection failed';
+      setPreflightResults({
+        passed: false,
+        ready: false,
+        healthScore: 0,
+        error: errMessage,
+        checks: {
+          subdomainUnique: false,
+          frontendReachable: false,
+          backendReachable: false,
+          frontendMessage: `Diagnostic probe failed: ${errMessage}`,
+          backendMessage: 'Diagnostic server error'
+        }
+      });
+      showSnackbar(`❌ Diagnostic probe failed: ${errMessage}`, 'error');
     } finally {
       setPreflightLoading(false);
     }
   };
 
-  // Validation rules for strict multi-tenant sequential stepper
-  const isSecurityValid = Boolean(wizardForm.clientId?.trim() && wizardForm.clientSecret?.trim());
-  const isIdentityValid = Boolean(
-    wizardForm.name?.trim() &&
-    wizardForm.customerCode?.trim() &&
-    (wizardForm.pendingOwnerMobile || wizardForm.ownerMobile || wizardForm.contact)?.trim()
-  );
-  const isRoutingValid = Boolean(wizardForm.softwareProduct && wizardForm.assignedPort);
-  const isScreensValid = true; // Always valid since features are 100% pre-checked
-
-  const canAccessStep = (stepKey) => {
-    if (stepKey === 'security') return true;
-    if (stepKey === 'identity') return isSecurityValid;
-    if (stepKey === 'routing') return isSecurityValid && isIdentityValid;
-    if (stepKey === 'screens') return isSecurityValid && isIdentityValid && isRoutingValid;
-    if (stepKey === 'deployment') return isSecurityValid && isIdentityValid && isRoutingValid && isScreensValid;
-    return false;
-  };
-
-  const getStepStatus = (stepKey) => {
-    const idxMap = { security: 1, identity: 2, routing: 3, screens: 4, deployment: 5 };
-    const currIdx = idxMap[wizardStep];
-    const targetIdx = idxMap[stepKey];
-
-    if (currIdx === targetIdx) return 'active';
-    if (canAccessStep(stepKey) && targetIdx < currIdx) return 'completed';
-    if (!canAccessStep(stepKey)) return 'locked';
-    return 'available';
-  };
-
-  // Current selected application object & smart URL calculation
-  const currentWizardApp = apps.find(a => a.appCode === wizardForm.softwareProduct);
-  const appFeaturesList = getAppFeatures(currentWizardApp);
-
-  const smartAppSlug = currentWizardApp?.urlSlug || currentWizardApp?.appCode?.toLowerCase().replace(/_/g, '') || 'app';
-  const smartCustomerKey = (wizardForm.customerCode || 'tenant').toLowerCase().trim();
-  const computedSmartUrl = `https://${smartAppSlug}.${smartCustomerKey}.renic.store`;
-
-  // Submit Wizard (Create or Edit)
+  // Submit Wizard Form
   const handleWizardSubmit = async (e) => {
     if (e) e.preventDefault();
-    setWizardSubmitting(true);
     try {
+      setWizardSubmitting(true);
+
+      const slug = appSlugFor(wizardForm.softwareProduct);
+      const smartUrl = buildCustomerUrl(wizardForm, slug);
+
+      // `portForwarding` is intentionally NOT part of the payload any more: a
+      // customer's target IP / assigned port / connection type are not
+      // configurable — routing is by Host header (config/appPorts.js).
+      const payload = {
+        ...wizardForm,
+        fullSaaSDomain: smartUrl
+      };
+
       if (wizardMode === 'create') {
-        const payload = {
-          ...wizardForm,
-          customerCode: (wizardForm.customerCode || wizardForm.subdomain || wizardForm.name).trim().toUpperCase(),
-          subdomain: (wizardForm.subdomain || wizardForm.customerCode || wizardForm.name).toLowerCase().trim(),
-          ownerEmail: wizardForm.pendingOwnerEmail || wizardForm.ownerEmail || `admin@${(wizardForm.customerCode || 'tenant').toLowerCase()}.renicsoft.com`,
-          ownerMobile: wizardForm.pendingOwnerMobile || wizardForm.ownerMobile || wizardForm.contact || '9876543210',
-          ownerPassword: wizardForm.pendingOwnerPassword || wizardForm.ownerPassword || 'Renic@2026',
-          fullSaaSDomain: computedSmartUrl
-        };
+        // This used to POST to '/clients/wizard-onboard' — a route that does not
+        // exist anywhere in the backend, so onboarding returned 404 every time.
+        // The real create route is POST /clients, which expects exactly the
+        // fields this payload already carries (name/ownerEmail/ownerMobile/
+        // ownerPassword).
         const res = await api.post('/clients', payload);
-        showSnackbar(res.data.message || 'Customer instance successfully provisioned!', 'success');
-        setWizardOpen(false);
-        fetchData();
-        if (res.data.credentials) {
-          setCreatedCreds({
-            ...res.data.credentials,
-            clientName: res.data.client?.name || payload.name,
-            mobile: payload.ownerMobile,
-            hostingUrl: computedSmartUrl,
-            dbName: res.data.provisioning?.dbName || ('renic_tenant_' + payload.customerCode.toLowerCase())
-          });
-        }
+        showSnackbar(`🚀 Instance Launched! Dedicated Portal: ${smartUrl}`, 'success');
+        const created = res.data.client || {};
+        setCreatedCreds({
+          clientName: created.name || wizardForm.name,
+          customerCode: created.customerCode || res.data.credentials?.customerCode || wizardForm.customerCode,
+          hostingUrl: created.fullSaaSDomain || res.data.credentials?.hostingUrl || smartUrl,
+          dbName: created.databaseName || `renic_tenant_${(wizardForm.customerCode || '').toLowerCase()}`,
+          clientId: res.data.credentials?.clientId || wizardForm.clientId,
+          clientSecret: res.data.credentials?.clientSecret || wizardForm.clientSecret,
+          email: wizardForm.ownerEmail,
+          password: wizardForm.ownerPassword,
+          mobile: wizardForm.pendingOwnerMobile || wizardForm.ownerMobile
+        });
       } else {
-        // Edit Mode
-        const payload = {
-          ...wizardForm,
-          fullSaaSDomain: computedSmartUrl
-        };
-        const res = await api.put(`/clients/${wizardForm._id}`, payload);
-        showSnackbar(res.data.message || 'Customer instance and OAuth security updated successfully!', 'success');
-        setWizardOpen(false);
-        fetchData();
+        await api.put(`/clients/${selectedClient._id}`, payload);
+        showSnackbar(`Saved & Pushed OTA configuration for ${wizardForm.name}!`, 'success');
       }
+
+      setWizardOpen(false);
+      setSelectedClient(null);
+      setIsPanelMaximized(false);
+      fetchData();
     } catch (err) {
       showSnackbar(err.response?.data?.message || 'Failed to save customer instance', 'error');
     } finally {
       setWizardSubmitting(false);
-    }
-  };
-
-  // 1-Click Instant Activation
-  const handleActivateNow = async (c) => {
-    try {
-      setActivatingId(c._id);
-      const res = await api.put(`/clients/${c._id}/activate`);
-      showSnackbar(res.data.message || `License for ${c.name} activated!`, 'success');
-      fetchData();
-    } catch (err) {
-      showSnackbar(err.response?.data?.message || 'Failed to activate license', 'error');
-    } finally {
-      setActivatingId(null);
-    }
-  };
-
-  // Interactive Live Day Adjuster
-  const handleAdjustDays = async (c, deltaDays) => {
-    try {
-      setActiveExtendMenuId(null);
-      const res = await api.post(`/clients/${c._id}/adjust-days`, { deltaDays });
-      showSnackbar(res.data.message || `Adjusted subscription by ${deltaDays > 0 ? '+' : ''}${deltaDays} days`, 'success');
-      fetchData();
-    } catch (err) {
-      showSnackbar(err.response?.data?.message || 'Failed to adjust days', 'error');
-    }
-  };
-
-  // Convert Trial to Production Tenant
-  const handleConvertToProduction = async (c) => {
-    const confirmed = await confirmDialog({
-      title: '🚀 Convert Trial to Production Tenant?',
-      message: `This will provision a permanent dedicated database (renic_tenant_${(c.customerCode || '').toLowerCase()}), migrate all trial data, and activate full 1-year production access for ${c.name}. Proceed?`,
-      confirmText: 'Yes, Convert Now',
-      danger: false
-    });
-    if (!confirmed) return;
-
-    try {
-      showSnackbar(`Migrating trial data for ${c.name}...`, 'info');
-      const res = await api.post(`/clients/${c._id}/convert-to-production`, {
-        planTier: 'enterprise',
-        subscriptionDays: 365
-      });
-      showSnackbar(res.data.message || 'Client successfully converted to Production!', 'success');
-      fetchData();
-    } catch (err) {
-      showSnackbar(err.response?.data?.message || 'Failed to convert trial to production', 'error');
     }
   };
 
@@ -480,7 +609,7 @@ export default function Licenses() {
     }
   };
 
-  // Toggle Customer Lock (Instantly disables/locks customer, shuts down URL with 403, flushes proxy cache)
+  // Toggle Customer Lock
   const handleToggleLock = async (c) => {
     const isLocked = Boolean(
       c.securitySettings?.emergencyLock ||
@@ -491,7 +620,7 @@ export default function Licenses() {
       title: `${actionText} customer "${c.name}"?`,
       message: isLocked
         ? `This will restore web URL access for ${c.customerCode || c.subdomain}, re-enable routing, and unlock client terminals.`
-        : `This will immediately shut down the customer's dedicated URL (${c.subdomain}.renic.store / ${c.customerCode}) and return an authoritative 403 Portal Deactivated page. Client terminals will immediately be locked.`,
+        : `This will immediately shut down the customer's dedicated URL (${buildCustomerUrl(c).replace('https://', '')} / ${c.customerCode}) and return an authoritative 403 Portal Deactivated page. Client terminals will immediately be locked.`,
       confirmText: actionText,
       danger: !isLocked
     });
@@ -509,21 +638,55 @@ export default function Licenses() {
     }
   };
 
-  // Delete Tenant (Permanently terminates instance, flushes proxy cache, URL returns 404)
+  // Delete Tenant
   const handleDelete = async (c) => {
+    const isTrialClient = c.isTrial || c.licenseStatus === 'trial';
     const ok = await confirmDialog({
-      title: `Delete customer instance "${c.name}"?`,
-      message: `This will permanently delete this customer instance. Their dedicated URL (${c.subdomain}.renic.store / ${c.customerCode}) will immediately cease to exist and return a 404 Instance Terminated page. This action cannot be undone.`,
-      confirmText: 'Delete Instance',
+      title: `${isTrialClient ? 'Purge Trial Sandbox' : 'Delete Customer Instance'} "${c.name}"?`,
+      message: `This will permanently delete this instance and drop its isolated database (${c.databaseName || 'renic_tenant_' + c.customerCode}). Their dedicated URL (${buildCustomerUrl(c).replace('https://', '')} / ${c.customerCode}) will immediately cease to exist. This action cannot be undone.`,
+      confirmText: isTrialClient ? 'Purge Trial Sandbox' : 'Delete Instance',
       danger: true
     });
     if (!ok) return;
     try {
       await api.delete(`/clients/${c._id}`);
-      showSnackbar(`Customer "${c.name}" permanently deleted. URL routing shut down.`, 'success');
+      showSnackbar(`Customer "${c.name}" ${isTrialClient ? 'trial sandbox purged.' : 'deleted.'}`, 'success');
+      if (selectedClient?._id === c._id) {
+        setSelectedClient(null);
+        setWizardOpen(false);
+      }
       fetchData();
     } catch (err) {
       showSnackbar(err.response?.data?.message || 'Failed to delete instance', 'error');
+    }
+  };
+
+  // 1-Click Convert Trial to Full Production
+  const handleOpenConvertModal = (clientObj) => {
+    setClientToConvert(clientObj);
+    setConvertForm({
+      planTier: clientObj.planTier || 'pro',
+      billingCycle: '1_YEAR',
+      subscriptionDays: 365,
+      paymentReference: ''
+    });
+    setConvertModalOpen(true);
+  };
+
+  const handleConvertTrialSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!clientToConvert) return;
+    try {
+      setConvertSubmitting(true);
+      const res = await api.post(`/clients/${clientToConvert._id}/convert-to-production`, convertForm);
+      showSnackbar(`🎉 ${res.data.message || 'Client successfully upgraded to Dedicated Production!'}`, 'success');
+      setConvertModalOpen(false);
+      setClientToConvert(null);
+      fetchData();
+    } catch (err) {
+      showSnackbar(err.response?.data?.message || 'Failed to convert trial to production', 'error');
+    } finally {
+      setConvertSubmitting(false);
     }
   };
 
@@ -541,37 +704,6 @@ export default function Licenses() {
       setOauthModalOpen(false);
     } finally {
       setOauthLoading(false);
-    }
-  };
-
-  // Trigger Git Pull & Commit Sync for an Application
-  const handleSyncAppGit = async (appObj) => {
-    try {
-      setSyncingAppCode(appObj.appCode);
-      const res = await api.post(`/applications/${appObj._id || appObj.appCode}/git-sync`);
-      showSnackbar(res.data.message || `Synced ${appObj.name} with latest Git commit!`, 'success');
-      fetchApps();
-    } catch (err) {
-      showSnackbar(err.response?.data?.message || 'Git sync failed', 'error');
-    } finally {
-      setSyncingAppCode(null);
-    }
-  };
-
-  // Trigger AI Route & Feature Discovery
-  const handleExtractRoutesAI = async (appObj) => {
-    try {
-      setExtractingAppCode(appObj.appCode);
-      const res = await api.post('/applications/ai-extract', {
-        appCode: appObj.appCode,
-        repoPath: appObj.localRepoPath || 'd:/Development/WhatsApp Automation/WA_INSTA_AUTOMATION'
-      });
-      showSnackbar(`AI Discovery complete! Found ${res.data.routesFound} routes mapped into ${res.data.suggestedFeatures?.length || 0} features.`, 'success');
-      fetchApps();
-    } catch (err) {
-      showSnackbar(err.response?.data?.message || 'AI route extraction failed', 'error');
-    } finally {
-      setExtractingAppCode(null);
     }
   };
 
@@ -597,1689 +729,1930 @@ export default function Licenses() {
     return matchesProduct && matchesStatus && matchesSearch;
   });
 
-  return (
-    <div className="space-y-6">
-      {/* ============ AWS Console Header Toolbar ============ */}
-      <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-sm border border-slate-800">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mb-1">
-              <span>Renic Soft Master</span>
-              <span>/</span>
-              <span className="text-emerald-400 font-bold">Fleet Governance</span>
-              <span>/</span>
-              <span>Customer Instances</span>
-            </div>
-            <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
-              <span>Customer Fleet &amp; Instance Manager</span>
-              <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40">
-                Multi-Tenant Cloud PaaS
-              </span>
-            </h1>
-            <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-              Centrally govern multi-tenant infrastructure, enforce strict zero-trust OAuth 2.0 gating, route local port-forwarding, and dispatch live screen permissions over the air.
-            </p>
-          </div>
+  const currentWizardApp = apps.find(a => a.appCode === wizardForm.softwareProduct);
+  const appFeaturesList = getAppFeatures(currentWizardApp);
+  const smartAppSlug = appSlugFor(wizardForm.softwareProduct) || appSlugForProduct(wizardForm.softwareProduct) || 'pos';
+  const computedSmartUrl = buildCustomerUrl(wizardForm, smartAppSlug);
+  const currentWizardPort = currentWizardApp?.defaultPort || appPortForProduct(wizardForm.softwareProduct);
+  const currentWizardBackendPort = backendPortForProduct(wizardForm.softwareProduct);
+  const cleanCustomerCode = (wizardForm.customerCode || wizardForm.subdomain || 'client').toLowerCase();
+  const localDevUrl = `http://localhost:${currentWizardPort}`;
+  const localLvhUrl = `http://${smartAppSlug}.${cleanCustomerCode}.lvh.me:${currentWizardPort}`;
+  const localGatewayUrl = `http://${smartAppSlug}.${cleanCustomerCode}.lvh.me:5050`;
+  const cloudflareTunnelCmd = `cloudflared tunnel --url http://localhost:${currentWizardPort}`;
 
-          <div className="flex items-center flex-wrap gap-2.5">
+  const activeSolutionModesList = Array.isArray(wizardForm.solutionModes) && wizardForm.solutionModes.length > 0
+    ? wizardForm.solutionModes
+    : (wizardForm.solutionMode ? wizardForm.solutionMode.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+  const toggleSolutionMode = (modeKey) => {
+    const currentModes = [...activeSolutionModesList];
+    const exists = currentModes.includes(modeKey);
+    let updatedModes;
+    if (exists) {
+      updatedModes = currentModes.filter(m => m !== modeKey);
+    } else {
+      updatedModes = [...currentModes, modeKey];
+    }
+
+    // Determine default screens for all currently selected modes
+    const activeScreenKeys = new Set();
+    updatedModes.forEach(mKey => {
+      const modeObj = (currentWizardApp?.solutionModes || []).find(m => m.modeKey === mKey);
+      if (modeObj?.defaultScreenKeys) {
+        modeObj.defaultScreenKeys.forEach(k => activeScreenKeys.add(k));
+      }
+    });
+
+    const newPerms = {};
+    if (updatedModes.length > 0 && activeScreenKeys.size > 0) {
+      appFeaturesList.forEach(f => {
+        newPerms[f.key] = activeScreenKeys.has(f.key);
+      });
+    } else if (updatedModes.length === 0) {
+      appFeaturesList.forEach(f => {
+        newPerms[f.key] = false;
+      });
+    } else {
+      appFeaturesList.forEach(f => {
+        newPerms[f.key] = true;
+      });
+    }
+
+    const apptMode = (currentWizardApp?.solutionModes || []).find(m => updatedModes.includes(m.modeKey) && m.businessTypes?.length > 0);
+    const firstBt = apptMode?.businessTypes?.[0] || wizardForm.customTerminology || {};
+
+    setWizardForm(prev => ({
+      ...prev,
+      solutionModes: updatedModes,
+      solutionMode: updatedModes.join(','),
+      businessType: apptMode ? (prev.businessType || firstBt.typeKey || '') : prev.businessType,
+      customTerminology: apptMode ? (Object.keys(prev.customTerminology || {}).length ? prev.customTerminology : firstBt) : prev.customTerminology,
+      screenPermissions: newPerms
+    }));
+
+    const modeNames = updatedModes.map(k => {
+      const mObj = currentWizardApp?.solutionModes?.find(m => m.modeKey === k);
+      return mObj?.displayName || mObj?.name || k;
+    }).join(' + ');
+
+    if (updatedModes.length > 0) {
+      showSnackbar(`Selected: ${modeNames} (${activeScreenKeys.size} screens enabled)`, 'info');
+    } else {
+      showSnackbar('All solution modes deselected', 'warning');
+    }
+  };
+
+  const resetToModeScreenDefaults = () => {
+    const activeScreenKeys = new Set();
+    activeSolutionModesList.forEach(mKey => {
+      const modeObj = (currentWizardApp?.solutionModes || []).find(m => m.modeKey === mKey);
+      if (modeObj?.defaultScreenKeys) {
+        modeObj.defaultScreenKeys.forEach(k => activeScreenKeys.add(k));
+      }
+    });
+
+    const newPerms = {};
+    if (activeSolutionModesList.length > 0 && activeScreenKeys.size > 0) {
+      appFeaturesList.forEach(f => {
+        newPerms[f.key] = activeScreenKeys.has(f.key);
+      });
+    } else {
+      appFeaturesList.forEach(f => {
+        newPerms[f.key] = true;
+      });
+    }
+
+    setWizardForm(prev => ({
+      ...prev,
+      screenPermissions: newPerms
+    }));
+    showSnackbar('Reset screen permissions to selected mode default(s)', 'info');
+  };
+
+  return (
+    <div ref={containerRef} className="flex h-full w-full overflow-hidden bg-[#f4f6f8] text-slate-800 flex-1">
+      {/* ============ TWO-COLUMN MASTER-DETAIL LAYOUT ============ */}
+      
+      {/* ============ LEFT COLUMN: MASTER LIST TABLE (40-42% Width) ============ */}
+      {!isPanelMaximized && (
+        <div
+          style={{ width: wizardOpen ? `${splitPercent}%` : '100%', transition: isDragging ? 'none' : 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+          className="flex flex-col bg-white border-r border-slate-200 overflow-hidden flex-shrink-0 transition-[width] duration-300 ease-in-out"
+        >
+          {/* Top Control Bar for Left Column */}
+          <div className="p-3 bg-white border-b border-slate-200 flex items-center justify-between gap-2 flex-shrink-0">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Search customers or codes..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white font-medium"
+              />
+              <span className="absolute left-2.5 top-2 text-slate-400">
+                <Icon name="search" className="w-3.5 h-3.5" />
+              </span>
+            </div>
+
             <button
-              onClick={() => fetchData()}
-              className="px-3 py-2 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5"
-              title="Refresh Fleet Status"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition ${
+                showFilters ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-300'
+              }`}
             >
-              <Icon name="refresh" className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-emerald-400' : ''}`} />
-              Refresh
+              Filters
             </button>
 
-            <Link
-              to="/deployments"
-              className="px-3.5 py-2 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 transition flex items-center gap-1.5"
-              title="View Git Commits & Zero-Downtime Deployment Logs"
+            <button
+              onClick={() => fetchData()}
+              className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
+              title="Refresh Fleet"
             >
-              <Icon name="gitBranch" className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Git Deployments</span>
-            </Link>
-
-            <Link
-              to="/applications"
-              className="px-3.5 py-2 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 transition flex items-center gap-1.5"
-              title="Manage Applications & Feature Mappings (PaaS Hub)"
-            >
-              <Icon name="store" className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Applications ({apps.length})</span>
-            </Link>
+              <Icon name="refresh" className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#65a30d]' : ''}`} />
+            </button>
 
             <button
               onClick={handleOpenCreateWizard}
-              className="px-4 py-2 text-xs font-extrabold rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 transition flex items-center gap-2 shadow-md hover:shadow-lg"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] font-bold text-xs rounded-lg shadow-xs transition"
             >
-              <Icon name="plus" className="w-4 h-4 text-slate-950 stroke-[3]" />
-              Launch Customer Instance
+              <Icon name="plus" className="w-3.5 h-3.5 stroke-[2.5]" /> Launch Instance
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* ============ CloudWatch-Style KPI Dashboard ============ */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Instances</span>
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
-              <Icon name="dashboard" className="w-4 h-4" />
+          {/* Optional Filter Pills Bar */}
+          {showFilters && (
+            <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center gap-2 text-xs flex-wrap flex-shrink-0">
+              <span className="font-bold text-slate-500 uppercase text-[10px]">App:</span>
+              <button
+                onClick={() => setProductFilter('ALL')}
+                className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                  productFilter === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white border border-slate-300 text-slate-700'
+                }`}
+              >
+                All ({clients.length})
+              </button>
+              {assignableApps.map(a => (
+                <button
+                  key={a.appCode}
+                  onClick={() => setProductFilter(a.appCode)}
+                  className={`px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap ${
+                    productFilter === a.appCode ? 'bg-slate-800 text-white' : 'bg-white border border-slate-300 text-slate-700'
+                  }`}
+                >
+                  {a.name}
+                </button>
+              ))}
+
+              <div className="h-3 w-px bg-slate-300 mx-1" />
+
+              <span className="font-bold text-slate-500 uppercase text-[10px]">Status:</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-2 py-0.5 rounded border border-slate-300 bg-white text-xs font-semibold text-slate-700"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="ACTIVE">Active</option>
+                <option value="OAUTH_ENFORCED">OAuth Enforced</option>
+                <option value="EXPIRING">Expiring Soon</option>
+                <option value="EXPIRED">Expired</option>
+              </select>
             </div>
-          </div>
-          <div className="text-3xl font-black text-slate-900 mt-2">{metrics.total}</div>
-          <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Multi-tenant cloud &amp; on-prem fleet
-          </div>
-        </div>
+          )}
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active Licences</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
-              <Icon name="check" className="w-4 h-4 stroke-[2.5]" />
-            </div>
-          </div>
-          <div className="text-3xl font-black text-emerald-600 mt-2">{metrics.active}</div>
-          <div className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> In Good Standing &amp; Routing
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">OAuth 2.0 Enforced</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
-              <Icon name="key" className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-black text-indigo-600 mt-2">{metrics.oauthEnforced}</div>
-          <div className="text-[11px] text-indigo-700 font-semibold mt-1 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" /> Strict Zero-Trust Gating
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Expiring &lt; 7 Days</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
-              <Icon name="clock" className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-3xl font-black text-amber-600 mt-2">{metrics.expiringSoon}</div>
-          <div className="text-[11px] text-amber-700 font-semibold mt-1 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Renewal action recommended
-          </div>
-        </div>
-      </div>
-
-      {/* ============ Search & Filter Toolbar ============ */}
-      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
-        {/* Product Filter Pills */}
-        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-          <button
-            onClick={() => setProductFilter('ALL')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition whitespace-nowrap ${
-              productFilter === 'ALL'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            All Software ({clients.length})
-          </button>
-          {apps.map(a => (
-            <button
-              key={a.appCode}
-              onClick={() => setProductFilter(a.appCode)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition whitespace-nowrap ${
-                productFilter === a.appCode
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {a.name} ({clients.filter(c => c.softwareProduct === a.appCode).length})
-            </button>
-          ))}
-        </div>
-
-        {/* Search & Status Controls */}
-        <div className="flex items-center gap-2.5 w-full md:w-auto">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="ACTIVE">Active Only</option>
-            <option value="OAUTH_ENFORCED">OAuth Enforced</option>
-            <option value="EXPIRING">Expiring Soon</option>
-            <option value="EXPIRED">Expired</option>
-          </select>
-
-          <div className="relative w-full md:w-64">
-            <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
-              <Icon name="search" className="w-3.5 h-3.5" />
+          {/* Table Header Sub-bar */}
+          <div className="px-3.5 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs flex-shrink-0">
+            <span className="font-bold text-slate-700">
+              Customer Instances ({filteredClients.length})
             </span>
-            <input
-              type="text"
-              placeholder="Search code, name, phone, port..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-            />
+            <span className="text-[11px] text-slate-400">
+              Click row to edit instance
+            </span>
           </div>
-        </div>
-      </div>
 
-      {/* ============ AWS Management Console Table ============ */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-visible">
-        <div className="overflow-x-auto overflow-y-visible">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-500 text-[11px] font-extrabold uppercase tracking-wider">
-                <th className="py-3.5 px-4">Customer &amp; Access URL</th>
-                <th className="py-3.5 px-4">Software &amp; Routing</th>
-                <th className="py-3.5 px-4">OAuth 2.0 Security</th>
-                <th className="py-3.5 px-4">Subscription &amp; Expiry</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {loading ? (
+          {/* List Content */}
+          <div className="flex-1 overflow-y-auto">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-100/70 sticky top-0 z-10 border-b border-slate-200 text-[11px] font-bold text-slate-600">
                 <tr>
-                  <td colSpan={5} className="text-center py-16 text-slate-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <Icon name="refresh" className="w-6 h-6 animate-spin text-emerald-500" />
-                      <span className="font-semibold text-xs">Loading customer instances...</span>
-                    </div>
-                  </td>
+                  <th className="py-2 px-3">Customer / Software</th>
+                  <th className="py-2 px-3">Status</th>
+                  <th className="py-2 px-3 hidden sm:table-cell">Expiry</th>
+                  <th className="py-2 px-2 text-right">Actions</th>
                 </tr>
-              ) : filteredClients.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-16 text-slate-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <Icon name="store" className="w-8 h-8 text-slate-300" />
-                      <span className="font-bold text-slate-700">No matching customer instances found</span>
-                      <span className="text-xs text-slate-400">Click &quot;Launch Customer Instance&quot; to provision a new tenant.</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredClients.map((c) => {
-                  const isExpired = new Date(c.licenseEnd) < new Date();
-                  const daysLeft = Math.ceil((new Date(c.licenseEnd) - new Date()) / (24 * 3600 * 1000));
-                  const code = c.customerCode || c.subdomain?.toUpperCase() || 'CLIENT';
-                  const appObj = apps.find(a => a.appCode === c.softwareProduct);
-                  const isMenuOpen = activeExtendMenuId === c._id;
-                  const tenantSlug = appObj?.urlSlug || (c.softwareProduct === 'TEXTILE_POS' ? 'pos' : c.softwareProduct === 'WHATSAPP_AUTOMATION' ? 'wa' : 'app');
-                  const tenantUrl = c.fullSaaSDomain || `https://${tenantSlug}.${code.toLowerCase()}.renic.store`;
-                  const isLockedOrDisabled = Boolean(
-                    c.securitySettings?.emergencyLock ||
-                    ['locked', 'disabled', 'suspended', 'cancelled', 'inactive', 'revoked'].includes(c.licenseStatus)
-                  );
+              </thead>
+              <tbody className="divide-y divide-slate-200 text-xs">
+                {loading ? (
+                  <tr>
+                    <td colSpan={4} className="py-12 text-center text-slate-400">
+                      <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto text-[#65a30d] mb-2" />
+                      <span>Loading customer instances...</span>
+                    </td>
+                  </tr>
+                ) : filteredClients.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-12 text-center text-slate-400">
+                      <p className="font-bold text-slate-600">No instances found</p>
+                      <p className="text-[11px] mt-0.5">Click &quot;Launch Instance&quot; to provision a new tenant.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredClients.map((c) => {
+                    const isExpired = new Date(c.licenseEnd) < new Date();
+                    const daysLeft = Math.ceil((new Date(c.licenseEnd) - new Date()) / (24 * 3600 * 1000));
+                    const code = c.customerCode || c.subdomain?.toUpperCase() || 'CLIENT';
+                    const isSelected = selectedClient?._id === c._id && wizardOpen;
+                    const appObj = apps.find(a => a.appCode === c.softwareProduct);
+                    const isLockedOrDisabled = Boolean(
+                      c.securitySettings?.emergencyLock ||
+                      ['locked', 'disabled', 'suspended', 'cancelled', 'inactive', 'revoked'].includes(c.licenseStatus)
+                    );
 
-                  return (
-                    <tr key={c._id} className="hover:bg-slate-50/80 transition-colors">
-                      {/* Column 1: Customer Identity & URL */}
-                      <td className="py-4 px-4 align-top">
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-slate-900 text-base">{c.name}</span>
-                          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-900 text-emerald-400">
-                            {code}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-1.5">
-                          <span className={`inline-flex items-center text-xs font-mono font-bold px-2.5 py-0.5 rounded-lg border ${
-                            isLockedOrDisabled
-                              ? 'text-rose-700 bg-rose-50 border-rose-200 line-through opacity-75'
-                              : 'text-emerald-800 bg-emerald-50/80 border border-emerald-200'
-                          }`}>
-                            {tenantUrl}
-                          </span>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(tenantUrl);
-                              showSnackbar('Copied URL to clipboard!');
-                            }}
-                            className="text-slate-400 hover:text-slate-700 p-1 rounded"
-                            title="Copy URL"
-                          >
-                            <Icon name="copy" className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => window.open(tenantUrl, '_blank')}
-                            className={`p-1 rounded ${isLockedOrDisabled ? 'text-rose-400 hover:text-rose-600' : 'text-slate-400 hover:text-emerald-600'}`}
-                            title={isLockedOrDisabled ? "Test Disabled URL (Returns 403 Portal Deactivated)" : "Open Store URL in new tab"}
-                          >
-                            <Icon name="eye" className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        {isLockedOrDisabled && (
-                          <div className="mt-1">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                              <Icon name="lock" className="w-2.5 h-2.5 text-rose-700" />
-                              URL Inactive & Locked (403)
+                    return (
+                      <tr
+                        key={c._id}
+                        onClick={() => handleOpenEditWizard(c)}
+                        className={`cursor-pointer transition select-none ${
+                          isSelected
+                            ? 'bg-lime-50/70 border-l-4 border-l-[#84cc16]'
+                            : 'hover:bg-slate-50 border-l-4 border-l-transparent'
+                        }`}
+                      >
+                        {/* Col 1: Customer Name & Code */}
+                        <td className="py-2.5 px-3 align-top">
+                          <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                            <span>{c.name}</span>
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-700">
+                              {code}
                             </span>
                           </div>
-                        )}
-                        <div className="text-[11px] text-slate-400 mt-1">
-                          GST: {c.gstNumber || 'None'} · Mobile: {c.pendingOwnerMobile || c.contact || 'N/A'}
-                        </div>
-                      </td>
+                          <div className="text-[11px] text-slate-500 font-medium truncate max-w-[170px] mt-0.5">
+                            {appObj?.name || c.softwareProduct}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono truncate max-w-[170px]">
+                            {buildCustomerUrl(c).replace('https://', '')}
+                          </div>
+                        </td>
 
-                      {/* Column 2: Software & Network */}
-                      <td className="py-4 px-4 align-top">
-                        <span className="inline-block text-xs font-bold px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 border border-slate-200">
-                          {appObj ? appObj.name : c.softwareProduct}
-                        </span>
-                        <div className="text-[11px] text-slate-600 mt-1.5 flex items-center gap-2">
-                          <span>Tier: <strong className="text-emerald-600 uppercase font-bold">{c.planTier || 'pro'}</strong></span>
-                          <span>·</span>
-                          <span>Port: <strong className="font-mono text-slate-800">{c.portForwarding?.assignedPort || c.assignedPort || 5000}</strong></span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
-                          Router: {c.portForwarding?.connectionType === 'CLOUDFLARE_TUNNEL' ? 'Cloudflare Tunnel' : 'Port Forwarding'}
-                        </div>
-                      </td>
-
-                      {/* Column 3: OAuth 2.0 Security */}
-                      <td className="py-4 px-4 align-top">
-                        <div className="flex items-center gap-1.5">
-                          {c.oauthEnforced ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                              <Icon name="key" className="w-3 h-3 text-emerald-600" />
-                              OAuth Enforced (M2M)
+                        {/* Col 2: Status */}
+                        <td className="py-2.5 px-3 align-top">
+                          {c.isTrial || c.licenseStatus === 'trial' ? (
+                            <span className="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                              🧪 Trial ({daysLeft > 0 ? `${daysLeft}d` : 'Ended'})
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
-                              Permissive Mode
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1.5 mt-1.5">
-                          <span className="text-[11px] font-mono text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-                            {c.clientId ? c.clientId.substring(0, 16) + '...' : 'rnc_cli_...'}
-                          </span>
-                          {c.clientId && (
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(c.clientId);
-                                showSnackbar('Copied Client ID!');
-                              }}
-                              className="text-slate-400 hover:text-slate-700"
-                              title="Copy Client ID"
-                            >
-                              <Icon name="copy" className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="mt-1">
-                          <button
-                            onClick={() => openOAuthModal(c)}
-                            className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 hover:underline"
-                          >
-                            <span>🔑</span> View Postman Kit
-                          </button>
-                        </div>
-                      </td>
-
-                      {/* Column 4: Subscription & Expiry */}
-                      <td className="py-4 px-4 align-top">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-slate-800">
-                            {c.billingCycle ? c.billingCycle.replace('_', ' ') : '1 MONTH'}
-                          </span>
-                          {c.isTrial && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
-                              🟡 Trial
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          Until {new Date(c.licenseEnd).toLocaleDateString()}
-                        </div>
-
-                        <div className={`text-xs font-bold mt-1 ${
-                          isLockedOrDisabled ? 'text-rose-600' : isExpired ? 'text-red-600' : daysLeft <= 7 ? 'text-amber-600' : 'text-emerald-600'
-                        }`}>
-                          {isLockedOrDisabled ? '🔴 Disabled / Locked' : isExpired ? '🔴 Expired (Locked)' : `🟢 ${daysLeft} days remaining`}
-                        </div>
-
-                        {c.isTrial && (
-                          <button
-                            type="button"
-                            onClick={() => handleConvertToProduction(c)}
-                            className="mt-2 inline-flex items-center justify-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs hover:from-emerald-700 hover:to-teal-700 transition-all"
-                            title="Migrate trial to dedicated tenant database and activate 1-year production access"
-                          >
-                            🚀 Convert to Production
-                          </button>
-                        )}
-                      </td>
-
-                      {/* Column 5: Actions */}
-                      <td className="py-4 px-4 text-right align-top">
-                        <div className="inline-flex items-center justify-end gap-1.5 relative">
-                          {/* Live Extend Subscription Popover */}
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() => setActiveExtendMenuId(isMenuOpen ? null : c._id)}
-                              className="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 transition flex items-center gap-1"
-                              title="Extend subscription duration"
-                            >
-                              <span>+ Extend</span>
-                              <span className="text-[10px]">▾</span>
-                            </button>
-
-                            {isMenuOpen && (
-                              <div
-                                ref={extendMenuRef}
-                                className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-left"
-                              >
-                                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
-                                  Stack Days
-                                </div>
-                                {DURATION_OPTIONS.map((opt) => (
-                                  <button
-                                    key={opt.days}
-                                    type="button"
-                                    onClick={() => handleAdjustDays(c, opt.days)}
-                                    className="w-full px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center justify-between"
-                                  >
-                                    <span>{opt.label}</span>
-                                    <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-1 rounded">
-                                      {opt.badge}
-                                    </span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* 1-Click Lock / Unlock Toggle Button */}
-                          <button
-                            disabled={togglingLockId === c._id}
-                            className={`px-2.5 py-1.5 text-xs font-bold rounded-xl transition flex items-center gap-1 shadow-2xs ${
+                            <span className={`inline-block px-1.5 py-0.5 text-[10px] font-bold rounded ${
                               isLockedOrDisabled
-                                ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                                : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200'
-                            }`}
-                            onClick={() => handleToggleLock(c)}
-                            title={isLockedOrDisabled ? "Unlock & restore customer URL routing" : "Lock / Disable customer (URL returns 403 immediately)"}
-                          >
-                            <Icon name={isLockedOrDisabled ? "unlock" : "lock"} className="w-3.5 h-3.5" />
-                            {isLockedOrDisabled ? 'Unlock' : 'Disable'}
-                          </button>
+                                ? 'bg-rose-100 text-rose-800'
+                                : isExpired
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-emerald-100 text-emerald-800'
+                            }`}>
+                              {isLockedOrDisabled ? 'Locked' : isExpired ? 'Expired' : 'Active'}
+                            </span>
+                          )}
+                        </td>
 
-                          {/* OTA Sync Button */}
-                          <button
-                            disabled={syncingId === c._id}
-                            className="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1 shadow-2xs"
-                            onClick={() => handlePushSync(c)}
-                            title="Push live license, OAuth & screen gating over the air"
-                          >
-                            <Icon name="refresh" className={`w-3.5 h-3.5 ${syncingId === c._id ? 'animate-spin' : ''}`} />
-                            Sync
-                          </button>
+                        {/* Col 3: Expiry */}
+                        <td className="py-2.5 px-3 align-top hidden sm:table-cell">
+                          <div className="text-[11px] text-slate-700 font-medium">
+                            {new Date(c.licenseEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            {isExpired ? 'Expired' : `${daysLeft}d remaining`}
+                          </div>
+                        </td>
 
-                          {/* Multi-Step Configure Button */}
-                          <button
-                            className="px-2.5 py-1.5 text-xs font-bold rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition flex items-center gap-1"
-                            onClick={() => handleOpenEditWizard(c)}
-                            title="Configure Tenant, Network, OAuth & Screen Gate"
-                          >
-                            <Icon name="edit" className="w-3.5 h-3.5" />
-                            Edit
-                          </button>
-
-                          {/* Delete Button */}
-                          <button
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition"
-                            onClick={() => handleDelete(c)}
-                            title="Revoke & Delete Instance"
-                          >
-                            <Icon name="trash" className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                        {/* Col 4: Row Actions */}
+                        <td className="py-2.5 px-2 align-top text-right" onClick={e => e.stopPropagation()}>
+                          <div className="inline-flex items-center gap-1">
+                            {(c.isTrial || c.licenseStatus === 'trial') && (
+                              <button
+                                onClick={() => handleOpenConvertModal(c)}
+                                className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-500 hover:bg-amber-600 text-white rounded shadow-2xs transition"
+                                title="Convert Trial to Dedicated Production"
+                              >
+                                ⭐ Upgrade
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handlePushSync(c)}
+                              disabled={syncingId === c._id}
+                              className="p-1 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition"
+                              title="OTA Push Sync"
+                            >
+                              <Icon name="refresh" className={`w-3.5 h-3.5 ${syncingId === c._id ? 'animate-spin text-emerald-600' : ''}`} />
+                            </button>
+                            <button
+                              onClick={() => handleToggleLock(c)}
+                              disabled={togglingLockId === c._id}
+                              className={`p-1 rounded transition ${isLockedOrDisabled ? 'text-rose-600 hover:bg-rose-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
+                              title={isLockedOrDisabled ? "Unlock" : "Lock"}
+                            >
+                              <Icon name="key" className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* ============ STRICT 5-STEP MULTI-TENANT CLOUD PROVISIONING WIZARD MODAL ============ */}
+      {/* Draggable Resizer */}
+      {wizardOpen && !isPanelMaximized && (
+        <SplitDivider isDragging={isDragging} onMouseDown={() => setIsDragging(true)} />
+      )}
+
+      {/* ============ RIGHT COLUMN: OBJECT DETAIL & CONFIGURATION PAGE ============ */}
       {wizardOpen && (
-        <Modal
-          open={wizardOpen}
-          onClose={() => setWizardOpen(false)}
-          title={
-            wizardMode === 'create'
-              ? '🚀 Launch New Customer Instance (Strict Sequential Stepper)'
-              : `⚙️ Configure Customer Instance: ${wizardForm.name} [${wizardForm.customerCode}]`
-          }
-          maxWidth="max-w-5xl"
-          footer={
-            <div className="flex items-center justify-between w-full">
-              <button
-                type="button"
-                className="btn-secondary !px-4"
-                onClick={() => setWizardOpen(false)}
-                disabled={wizardSubmitting}
-              >
-                Cancel
-              </button>
-
-              <div className="flex items-center gap-2">
-                {/* Back Button */}
-                {wizardStep !== 'security' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const order = ['security', 'identity', 'routing', 'screens', 'deployment'];
-                      const prevIdx = order.indexOf(wizardStep) - 1;
-                      if (prevIdx >= 0) setWizardStep(order[prevIdx]);
-                    }}
-                    className="px-4 py-2 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
-                  >
-                    ← Back
-                  </button>
-                )}
-
-                {/* Next Button for Steps 1-4 */}
-                {wizardStep !== 'deployment' ? (
-                  <button
-                    type="button"
-                    disabled={
-                      (wizardStep === 'security' && !isSecurityValid) ||
-                      (wizardStep === 'identity' && !isIdentityValid) ||
-                      (wizardStep === 'routing' && !isRoutingValid)
-                    }
-                    onClick={() => {
-                      const order = ['security', 'identity', 'routing', 'screens', 'deployment'];
-                      const nextIdx = order.indexOf(wizardStep) + 1;
-                      if (nextIdx < order.length) {
-                        const targetStep = order[nextIdx];
-                        if (canAccessStep(targetStep)) {
-                          setWizardStep(targetStep);
-                          if (targetStep === 'deployment' && !preflightResults) {
-                            runPreflightCheck();
-                          }
-                        }
-                      }
-                    }}
-                    className="btn-primary !bg-slate-900 hover:!bg-slate-800 text-white !px-5 !py-2.5 font-bold text-xs flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span>Next Step</span>
-                    <span>→</span>
-                  </button>
-                ) : (
-                  /* Launch / Save Button on Final Step 5 */
-                  <button
-                    type="submit"
-                    form="customer-wizard-form"
-                    disabled={wizardSubmitting || !isSecurityValid || !isIdentityValid}
-                    className="btn-primary !bg-emerald-600 hover:!bg-emerald-700 !px-6 !py-2.5 font-bold shadow-md text-xs"
-                  >
-                    {wizardSubmitting ? (
-                      <span className="flex items-center gap-2">
-                        <Icon name="refresh" className="w-4 h-4 animate-spin" />
-                        Saving to Infrastructure...
-                      </span>
-                    ) : wizardMode === 'create' ? (
-                      '🚀 Provision & Launch Customer Instance'
-                    ) : (
-                      'Save & Push OTA Live Update'
-                    )}
-                  </button>
-                )}
-              </div>
-            </div>
-          }
+        <div
+          style={{ width: isPanelMaximized ? '100%' : `${100 - splitPercent}%`, transition: isDragging ? 'none' : 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+          className="flex flex-col bg-white overflow-hidden h-full flex-1 animate-in fade-in slide-in-from-right-3 duration-300"
         >
-          {/* ============ Strict Sequential Stepper Bar ============ */}
-          <div className="border-b border-slate-200 -mt-2 mb-6 pb-3">
-            <div className="flex items-center justify-between gap-1 overflow-x-auto py-1">
-              {WIZARD_STEPS.map((step, idx) => {
-                const status = getStepStatus(step.id);
-                const isClickable = canAccessStep(step.id);
-
-                return (
-                  <React.Fragment key={step.id}>
-                    <button
-                      type="button"
-                      disabled={!isClickable}
-                      onClick={() => {
-                        if (isClickable) {
-                          setWizardStep(step.id);
-                          if (step.id === 'deployment' && !preflightResults) {
-                            runPreflightCheck();
-                          }
-                        }
-                      }}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition whitespace-nowrap ${
-                        status === 'active'
-                          ? 'bg-slate-900 text-white shadow-sm ring-2 ring-emerald-500/50'
-                          : status === 'completed'
-                          ? 'bg-emerald-50 text-emerald-900 hover:bg-emerald-100 cursor-pointer border border-emerald-200'
-                          : 'bg-slate-100/70 text-slate-400 cursor-not-allowed border border-slate-200/60'
-                      }`}
-                    >
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${
-                        status === 'active'
-                          ? 'bg-emerald-500 text-slate-950'
-                          : status === 'completed'
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-300 text-slate-600'
-                      }`}>
-                        {status === 'completed' ? '✓' : step.stepNum}
-                      </div>
-
-                      <div className="min-w-0 pr-1">
-                        <div className={`text-xs font-bold flex items-center gap-1.5 ${
-                          status === 'active' ? 'text-white' : status === 'completed' ? 'text-emerald-950' : 'text-slate-500'
-                        }`}>
-                          <span>{step.title}</span>
-                          {status === 'locked' && <span className="text-[10px]">🔒</span>}
-                        </div>
-                        <div className={`text-[10px] leading-tight truncate ${
-                          status === 'active' ? 'text-emerald-400 font-mono' : 'text-slate-400'
-                        }`}>
-                          {step.subtitle}
-                        </div>
-                      </div>
-                    </button>
-
-                    {idx < WIZARD_STEPS.length - 1 && (
-                      <div className={`w-4 h-0.5 flex-shrink-0 rounded ${
-                        canAccessStep(WIZARD_STEPS[idx + 1].id) ? 'bg-emerald-400' : 'bg-slate-200'
-                      }`} />
+          
+          {/* 1. Header Bar */}
+          <div className="p-4 sm:p-5 border-b border-slate-200 bg-white flex-shrink-0">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                    {wizardForm.name || 'New Customer Instance'}
+                  </h2>
+                  {wizardForm.customerCode && (
+                    <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-slate-900 text-emerald-400">
+                      {wizardForm.customerCode}
+                    </span>
+                  )}
+                  {wizardForm.isTrial && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                      🧪 Free Trial ({wizardForm.trialDays || 7}d Sandbox)
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1 space-y-0.5 text-xs text-slate-500 font-medium">
+                  <p>
+                    Created: <span className="text-slate-800">{selectedClient ? new Date(selectedClient.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Pending Provision'}</span>
+                    {selectedClient && (
+                      <span className="ml-3">License End: <span className="text-slate-800">{new Date(selectedClient.licenseEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span></span>
                     )}
-                  </React.Fragment>
-                );
-              })}
+                  </p>
+                  <p className="text-[11px] font-mono text-emerald-700">
+                    Route: {computedSmartUrl}
+                  </p>
+                </div>
+              </div>
+
+              {/* Right Header Action Icons */}
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {selectedClient && (selectedClient.isTrial || selectedClient.licenseStatus === 'trial') && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenConvertModal(selectedClient)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg shadow-xs transition"
+                    title="Convert Trial to Production"
+                  >
+                    ⭐ Convert to Production
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setWizardOpen(false)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition shadow-xs"
+                  title="Back to Instance List"
+                >
+                  <Icon name="arrow-left" className="w-3.5 h-3.5" /> Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedClient) openOAuthModal(selectedClient);
+                    else handleGenerateNewSecret();
+                  }}
+                  className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition"
+                  title="Copy OAuth / API Kit"
+                >
+                  <Icon name="key" className="w-4 h-4" />
+                </button>
+                <CopyBtn text={computedSmartUrl} showLabel={false} className="!p-1.5" />
+                <button
+                  type="button"
+                  onClick={() => setIsPanelMaximized(!isPanelMaximized)}
+                  className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition"
+                  title={isPanelMaximized ? "Restore Split View" : "Maximize Full View"}
+                >
+                  <Icon name="expand" className="w-4 h-4" />
+                </button>
+                {selectedClient && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(selectedClient)}
+                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                    title="Delete Instance"
+                  >
+                    <Icon name="trash" className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWizardOpen(false);
+                    setSelectedClient(null);
+                  }}
+                  className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
+                  title="Close Studio"
+                >
+                  <Icon name="close" className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
 
-          <form id="customer-wizard-form" onSubmit={handleWizardSubmit} className="space-y-4">
-            {/* ============ STEP 1: SECURITY FIRST (OAUTH 2.0 CREDENTIALS) ============ */}
-            {wizardStep === 'security' && (
-              <div className="space-y-4">
-                <div className="p-4 bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl border border-slate-700 shadow-xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">🔐</span>
-                        <h3 className="text-sm font-extrabold text-white">
-                          Step 1: Security &amp; OAuth 2.0 Machine Credentials
-                        </h3>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40">
-                          RFC 6749 M2M Gated
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
-                        In enterprise PaaS architecture, machine credentials and cryptographic keys must be generated before provisioning the tenant profile. All terminal endpoints will authenticate against these HMAC tokens.
-                      </p>
-                    </div>
+          {/* 2. Horizontal Anchor Tabs */}
+          <div className="border-b border-slate-200 bg-white px-4 flex items-center gap-4 sm:gap-6 overflow-x-auto no-scrollbar flex-shrink-0 text-xs font-semibold">
+            {WIZARD_SECTIONS.map((sec, idx) => {
+              const isActive = activeTabSection === idx;
+              return (
+                <button
+                  key={sec.id}
+                  onClick={() => handleScrollToSection(idx, sec.id)}
+                  className={`py-2.5 transition relative whitespace-nowrap ${
+                    isActive
+                      ? 'text-[#65a30d] font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {sec.label}
+                  {isActive && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#84cc16]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-                    <button
-                      type="button"
-                      onClick={handleGenerateNewSecret}
-                      className="px-3.5 py-2 text-xs font-extrabold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition flex items-center gap-1.5 shadow-sm self-start sm:self-center flex-shrink-0"
-                    >
-                      <span>⚡</span> Generate New Keys
-                    </button>
+          {/* 3. Scrollable Form Content */}
+          <div
+            ref={detailScrollRef}
+            onScroll={handlePanelScroll}
+            className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-slate-50/60"
+          >
+            <form onSubmit={handleWizardSubmit} className="space-y-6 max-w-4xl">
+              
+              {/* SECTION 1: Customer Profile */}
+              <div id="sec-identity" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 scroll-mt-6">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Icon name="store" className="w-3.5 h-3.5 text-emerald-600" /> 1. Customer Profile &amp; Store Info
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Customer / Store Name *</label>
+                    <input
+                      type="text"
+                      value={wizardForm.name}
+                      onChange={e => handleNameChange(e.target.value)}
+                      placeholder="e.g. Saraswathi Silks"
+                      required
+                      className="w-full px-3 py-1.5 text-xs font-medium rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Customer Code (Short Slug / ID) *</label>
+                    <input
+                      type="text"
+                      value={wizardForm.customerCode}
+                      onChange={e => setWizardForm({ ...wizardForm, customerCode: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') })}
+                      placeholder="e.g. saraswat-tx or apx-wa01"
+                      required
+                      className="w-full px-3 py-1.5 text-xs font-mono font-bold lowercase rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    />
                   </div>
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {/* Client ID */}
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                        <Icon name="key" className="w-3.5 h-3.5 text-emerald-600" />
-                        OAuth 2.0 Client ID (Public Identifier) *
-                      </label>
-                      <span className="text-[10px] text-slate-400 font-mono">rnc_cli_*</span>
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Owner Admin Email *</label>
+                    <input
+                      type="email"
+                      value={wizardForm.ownerEmail || wizardForm.pendingOwnerEmail || ''}
+                      onChange={e => setWizardForm({ ...wizardForm, ownerEmail: e.target.value, pendingOwnerEmail: e.target.value })}
+                      placeholder="admin@store.com"
+                      required
+                      className="w-full px-3 py-1.5 text-xs font-medium rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    />
+                  </div>
 
-                    <div className="flex items-center gap-2">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-700">Initial Admin Password *</label>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleGenerateOwnerPassword}
+                          className="text-[10px] font-bold text-[#65a30d] hover:underline cursor-pointer"
+                        >
+                          ⚡ Auto-Generate
+                        </button>
+                        {wizardForm.ownerPassword && (
+                          <CopyBtn text={wizardForm.ownerPassword} label="Copy" className="text-[10px] py-0.5 px-1.5" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="relative">
                       <input
-                        className="input font-mono font-bold bg-white text-slate-800 border-slate-300"
-                        value={wizardForm.clientId || ''}
-                        onChange={(e) => setWizardForm({ ...wizardForm, clientId: e.target.value })}
-                        placeholder="e.g. rnc_cli_tx10_abc123"
-                        required
+                        type={showOwnerPassword ? "text" : "password"}
+                        value={wizardForm.ownerPassword || ''}
+                        onChange={e => setWizardForm({ ...wizardForm, ownerPassword: e.target.value })}
+                        placeholder={wizardMode === 'edit' ? '(Leave blank to keep unchanged)' : 'e.g. Renic@2026'}
+                        required={wizardMode === 'create'}
+                        className="w-full pl-3 pr-8 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
                       />
                       <button
                         type="button"
-                        onClick={() => {
-                          if (wizardForm.clientId) {
-                            navigator.clipboard.writeText(wizardForm.clientId);
-                            showSnackbar('Client ID copied to clipboard!');
-                          }
-                        }}
-                        className="px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded-xl text-slate-700 text-xs font-bold flex-shrink-0"
+                        onClick={() => setShowOwnerPassword(!showOwnerPassword)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700"
+                        title={showOwnerPassword ? "Hide password" : "Show password"}
                       >
-                        Copy
+                        {showOwnerPassword ? '🙈' : '👁️'}
                       </button>
                     </div>
-                    <p className="text-[11px] text-slate-500">
-                      Public tenant identifier used in OAuth token handshakes.
-                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Owner Contact Phone *</label>
+                    <input
+                      type="text"
+                      value={wizardForm.ownerMobile || wizardForm.contact || ''}
+                      onChange={e => setWizardForm({ ...wizardForm, ownerMobile: e.target.value, contact: e.target.value, pendingOwnerMobile: e.target.value })}
+                      placeholder="9876543210"
+                      required
+                      className="w-full px-3 py-1.5 text-xs font-medium rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    />
                   </div>
 
-                  {/* Client Secret */}
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                        <Icon name="key" className="w-3.5 h-3.5 text-indigo-600" />
-                        OAuth 2.0 Client Secret (HMAC Key) *
-                      </label>
-                      <span className="text-[10px] text-slate-400 font-mono">rnc_sec_*</span>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-700">Plan Tier</label>
+                      <Link to="/plan-tiers" className="text-[10px] font-bold text-[#65a30d] hover:underline">
+                        + Manage Plans
+                      </Link>
                     </div>
+                    <select
+                      value={wizardForm.planTier}
+                      disabled={wizardForm.isTrial}
+                      onChange={e => {
+                        const tierVal = e.target.value;
+                        const matchingTier = availablePlanTiers.find(p => p.code === tierVal || p.name === tierVal);
+                        if (matchingTier) {
+                          const perms = {};
+                          if (matchingTier.screenPermissions && Object.keys(matchingTier.screenPermissions).length > 0) {
+                            Object.assign(perms, matchingTier.screenPermissions);
+                          } else if (Array.isArray(matchingTier.allowedScreens)) {
+                            appFeaturesList.forEach(f => {
+                              perms[f.key] = matchingTier.allowedScreens.includes(f.key);
+                            });
+                          }
+                          setWizardForm({
+                            ...wizardForm,
+                            planTier: matchingTier.code,
+                            billingCycle: matchingTier.billingCycle || wizardForm.billingCycle,
+                            screenPermissions: perms
+                          });
+                        } else {
+                          setWizardForm({ ...wizardForm, planTier: tierVal });
+                        }
+                      }}
+                      className={`w-full px-3 py-1.5 text-xs font-bold rounded border border-slate-300 bg-white ${wizardForm.isTrial ? 'opacity-60 bg-slate-100' : ''}`}
+                    >
+                      <option value="basic">Standard Basic Tier</option>
+                      <option value="pro">Professional (Pro) Tier</option>
+                      <option value="enterprise">Enterprise Tier</option>
+                      {availablePlanTiers
+                        .filter(p => !wizardForm.softwareProduct || p.appCode === wizardForm.softwareProduct)
+                        .map(plan => (
+                          <option key={plan._id || plan.code} value={plan.code}>
+                            {plan.name} (₹{plan.price?.toLocaleString()} - {plan.allowedScreens?.length || 0} Screens)
+                          </option>
+                        ))}
+                    </select>
+                  </div>
 
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {wizardForm.isTrial ? 'Trial Expiration' : 'License Duration'}
+                    </label>
+                    {wizardForm.isTrial ? (
+                      <div className="w-full px-3 py-1.5 text-xs font-bold rounded border border-amber-300 bg-amber-50 text-amber-900 flex items-center justify-between">
+                        <span>⏳ {wizardForm.trialDays || 7} Days Free Trial</span>
+                      </div>
+                    ) : (
+                      <select
+                        value={wizardForm.billingCycle}
+                        onChange={e => {
+                          const cycle = e.target.value;
+                          const daysMap = {
+                            '1_MONTH': 30,
+                            '3_MONTHS': 90,
+                            '6_MONTHS': 180,
+                            '1_YEAR': 365,
+                            'LIFETIME': 3650
+                          };
+                          setWizardForm({
+                            ...wizardForm,
+                            billingCycle: cycle,
+                            licenseDurationDays: daysMap[cycle] || 90
+                          });
+                        }}
+                        className="w-full px-3 py-1.5 text-xs font-bold rounded border border-slate-300 bg-white"
+                      >
+                        <option value="1_MONTH">1 Month (Monthly)</option>
+                        <option value="3_MONTHS">3 Months (Quarterly)</option>
+                        <option value="6_MONTHS">6 Months (Half-Yearly)</option>
+                        <option value="1_YEAR">1 Year (Annual)</option>
+                        <option value="LIFETIME">Lifetime / Enterprise</option>
+                      </select>
+                    )}
+                  </div>
+                </div>
+
+                {/* Free Trial Sandbox Provisioning Config */}
+                <div className={`p-3.5 rounded-xl border transition ${
+                  wizardForm.isTrial 
+                    ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-400/20' 
+                    : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                       <input
+                        type="checkbox"
+                        id="isTrialToggle"
+                        checked={Boolean(wizardForm.isTrial)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setWizardForm({
+                            ...wizardForm,
+                            isTrial: checked,
+                            licenseStatus: checked ? 'trial' : 'active',
+                            planTier: checked ? 'trial' : 'pro',
+                            trialDays: checked ? (wizardForm.trialDays || 7) : 0,
+                            licenseDurationDays: checked ? (wizardForm.trialDays || 7) : 90
+                          });
+                        }}
+                        className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                      />
+                      <label htmlFor="isTrialToggle" className="text-xs font-bold text-slate-800 cursor-pointer flex items-center gap-1.5">
+                        <span>🧪 Provision as Isolated Free Trial Customer</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-200/80 text-amber-900">
+                          Sandbox Mode
+                        </span>
+                      </label>
+                    </div>
+
+                    {wizardForm.isTrial && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-bold text-slate-600">Duration:</span>
+                        {[3, 5, 7, 14, 30].map(days => (
+                          <button
+                            key={days}
+                            type="button"
+                            onClick={() => setWizardForm({
+                              ...wizardForm,
+                              trialDays: days,
+                              licenseDurationDays: days
+                            })}
+                            className={`px-2 py-1 rounded text-xs font-bold transition ${
+                              wizardForm.trialDays === days
+                                ? 'bg-amber-600 text-white shadow-xs'
+                                : 'bg-white border border-amber-300 text-amber-900 hover:bg-amber-100'
+                            }`}
+                          >
+                            {days}d
+                          </button>
+                        ))}
+                        <div className="flex items-center gap-1 ml-1">
+                          <input
+                            type="number"
+                            min="1"
+                            max="90"
+                            value={wizardForm.trialDays || ''}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10) || 1;
+                              setWizardForm({ ...wizardForm, trialDays: val, licenseDurationDays: val });
+                            }}
+                            className="w-14 px-1.5 py-0.5 text-xs font-bold rounded border border-amber-300 bg-white text-center"
+                            placeholder="Days"
+                          />
+                          <span className="text-[10px] text-amber-900 font-bold">days</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {wizardForm.isTrial && (
+                    <div className="mt-2.5 pt-2 border-t border-amber-200/60 text-[11px] text-amber-900 space-y-1">
+                      <p className="font-semibold flex items-center gap-1">
+                        🛡️ <strong>Physical DB Isolation:</strong> Trial data will be stored in <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold">renic_trial_{(wizardForm.customerCode || 'client').toLowerCase()}</code>.
+                      </p>
+                      <p className="text-slate-600 text-[10px]">
+                        It will NEVER mix with production data. Once the customer is satisfied, you can 1-click upgrade and clone it directly to production from this Master HQ dashboard.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* SECTION 2: Security & OAuth 2.0 */}
+              <div id="sec-security" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 scroll-mt-6">
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-100">
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Icon name="key" className="w-3.5 h-3.5 text-[#65a30d]" /> 2. Security &amp; OAuth 2.0 Credentials
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateNewSecret()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] text-xs font-bold rounded-lg transition shadow-xs cursor-pointer"
+                  >
+                    <Icon name="refresh" className="w-3.5 h-3.5" />
+                    ⚡ Generate from Customer ID {wizardForm.customerCode ? `(${wizardForm.customerCode})` : ''}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      OAuth Client ID 
+                      {wizardForm.customerCode && (
+                        <span className="ml-1 text-[10px] text-emerald-600 font-normal">
+                          (Derived from: {wizardForm.customerCode})
+                        </span>
+                      )}
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={wizardForm.clientId}
+                        onChange={e => setWizardForm({ ...wizardForm, clientId: e.target.value })}
+                        placeholder="Click Generate or enter ID"
+                        className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-slate-50"
+                      />
+                      <CopyBtn text={wizardForm.clientId} showLabel={false} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">OAuth Client Secret</label>
+                    <div className="flex items-center gap-1.5">
+                      <input
                         type={showWizardSecret ? 'text' : 'password'}
-                        className="input font-mono font-bold bg-white text-slate-800 border-slate-300"
-                        value={wizardForm.clientSecret || ''}
-                        onChange={(e) => setWizardForm({ ...wizardForm, clientSecret: e.target.value })}
-                        placeholder="e.g. rnc_sec_xyz789..."
-                        required
+                        value={wizardForm.clientSecret}
+                        onChange={e => setWizardForm({ ...wizardForm, clientSecret: e.target.value })}
+                        placeholder="Click Generate or enter Secret"
+                        className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-slate-50"
                       />
                       <button
                         type="button"
                         onClick={() => setShowWizardSecret(!showWizardSecret)}
-                        className="px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded-xl text-slate-700 text-xs font-bold flex-shrink-0"
+                        className="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs text-slate-600 font-bold"
                       >
                         {showWizardSecret ? 'Hide' : 'Show'}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (wizardForm.clientSecret) {
-                            navigator.clipboard.writeText(wizardForm.clientSecret);
-                            showSnackbar('Client Secret copied!');
-                          }
-                        }}
-                        className="px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded-xl text-slate-700 text-xs font-bold flex-shrink-0"
-                      >
-                        Copy
-                      </button>
+                      <CopyBtn text={wizardForm.clientSecret} showLabel={false} />
                     </div>
-                    <p className="text-[11px] text-slate-500">
-                      High-entropy secret key for HMAC SHA-256 machine authentication.
-                    </p>
                   </div>
                 </div>
 
-                {/* Token Endpoint & cURL Test Preview */}
-                <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 text-slate-300 space-y-2">
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <div>
+                    <span className="text-xs font-bold text-slate-800">Enforce Zero-Trust OAuth 2.0</span>
+                    <p className="text-[11px] text-slate-500">Requires bearer token on all API and reverse-proxy requests</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setWizardForm({ ...wizardForm, oauthEnforced: !wizardForm.oauthEnforced })}
+                    className={`px-3 py-1 text-xs font-bold rounded transition ${
+                      wizardForm.oauthEnforced ? 'bg-[#84cc16] text-[#0f172a]' : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {wizardForm.oauthEnforced ? 'YES' : 'NO'}
+                  </button>
+                </div>
+              </div>
+
+              {/* SECTION 3: App & Smart Routing */}
+              <div id="sec-routing" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 scroll-mt-6">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Icon name="network" className="w-3.5 h-3.5 text-indigo-600" /> 3. Application &amp; Reverse Proxy Routing
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Software Product Application</label>
+                    <select
+                      value={wizardForm.softwareProduct}
+                      onChange={e => {
+                        const val = e.target.value;
+                        const targetApp = apps.find(a => a.appCode === val);
+                        const defaultMode = targetApp?.solutionModes?.[0];
+                        const defaultBt = defaultMode?.businessTypes?.[0];
+                        const defaultModes = defaultMode ? [defaultMode.modeKey] : [];
+                        const appFeatures = getAppFeatures(targetApp);
+                        const perms = {};
+                        if (defaultMode?.defaultScreenKeys && defaultMode.defaultScreenKeys.length > 0) {
+                          appFeatures.forEach(f => {
+                            perms[f.key] = defaultMode.defaultScreenKeys.includes(f.key);
+                          });
+                        } else {
+                          appFeatures.forEach(f => { perms[f.key] = true; });
+                        }
+                        setWizardForm({
+                          ...wizardForm,
+                          softwareProduct: val,
+                          solutionModes: defaultModes,
+                          solutionMode: defaultModes.join(','),
+                          businessType: defaultBt?.typeKey || '',
+                          customTerminology: defaultBt || {},
+                          screenPermissions: perms
+                        });
+                      }}
+                      className="w-full px-3 py-1.5 text-xs font-bold rounded border border-slate-300 bg-white"
+                    >
+                      {assignableApps.length === 0 ? (
+                        <option value="">Loading applications…</option>
+                      ) : (
+                        assignableApps.map((a) => (
+                          <option key={a.appCode} value={a.appCode}>
+                            {a.name || a.appCode}
+                            {a.urlSlug ? ` (${a.urlSlug})` : ''}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                </div>
+
+                <div className="space-y-3">
+                  {/* 1. Production VPS Route */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                        🌐 Production Multi-Tenant VPS Route:
+                      </span>
+                      <span className="text-[10px] text-slate-400">Requires DNS wildcard (*.renictech.com)</span>
+                    </div>
+                    <div className="font-mono text-[11px] text-slate-900 font-bold bg-white p-2 rounded border border-slate-200 flex items-center justify-between">
+                      <span className="truncate">{computedSmartUrl}</span>
+                      <div className="flex items-center gap-1.5">
+                        <CopyBtn text={computedSmartUrl} label="Copy VPS Route" />
+                        <a
+                          href={computedSmartUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                        >
+                          Open ↗
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Localhost & lvh.me Development Loopback */}
+                  <div className="p-3 bg-lime-50/70 border border-lime-200 rounded-lg text-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-lime-900 flex items-center gap-1.5">
+                        💻 Local Development &amp; Loopback URLs (Ready Now):
+                      </span>
+                      <span className="text-[10px] text-lime-700 font-semibold">Works immediately on 127.0.0.1</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="bg-white p-2 rounded border border-lime-200 flex flex-col justify-between">
+                        <div className="mb-1.5">
+                          <span className="text-[10px] text-slate-400 block font-sans">Direct Localhost:</span>
+                          <span className="font-mono text-[11px] text-lime-950 font-bold truncate block">{localDevUrl}</span>
+                        </div>
+                        <a
+                          href={localDevUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2 py-1 text-center text-[11px] font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-2xs"
+                        >
+                          Open Direct 🚀
+                        </a>
+                      </div>
+
+                      <div className="bg-white p-2 rounded border border-lime-200 flex flex-col justify-between">
+                        <div className="mb-1.5">
+                          <span className="text-[10px] text-slate-400 block font-sans">Tenant Direct URL:</span>
+                          <span className="font-mono text-[11px] text-lime-950 font-bold truncate block">{localLvhUrl}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <CopyBtn text={localLvhUrl} showLabel={false} className="!p-1" />
+                          <a
+                            href={localLvhUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex-1 text-center px-2 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                          >
+                            Open ↗
+                          </a>
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-2 rounded border border-lime-200 flex flex-col justify-between">
+                        <div className="mb-1.5">
+                          <span className="text-[10px] text-slate-400 block font-sans">Renic Soft Gateway (:5050):</span>
+                          <span className="font-mono text-[11px] text-lime-950 font-bold truncate block">{localGatewayUrl}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <CopyBtn text={localGatewayUrl} showLabel={false} className="!p-1" />
+                          <a
+                            href={localGatewayUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex-1 text-center px-2 py-1 text-[11px] font-bold text-indigo-900 bg-indigo-50 hover:bg-indigo-100 rounded-lg"
+                          >
+                            Gateway ↗
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Cloudflare Tunnel Integration */}
+                  <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-lg text-xs space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-amber-900 flex items-center gap-1.5">
+                        ⚡ Cloudflare Tunnel (cloudflared installed):
+                      </span>
+                      <span className="text-[10px] text-amber-700 font-semibold">For public HTTPS testing</span>
+                    </div>
+                    <p className="text-[11px] text-amber-800">
+                      Run this in PowerShell / Command Prompt to create an instant public HTTPS tunnel for this customer instance:
+                    </p>
+                    <div className="font-mono text-[11px] text-amber-950 font-bold bg-white p-2 rounded border border-amber-200 flex items-center justify-between">
+                      <span className="truncate">{cloudflareTunnelCmd}</span>
+                      <CopyBtn text={cloudflareTunnelCmd} label="Copy Command" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 4: Feature Governance */}
+              <div id="sec-screens" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 scroll-mt-6">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <Icon name="dashboard" className="w-3.5 h-3.5 text-amber-600" /> 4. Feature Governance &amp; Screen Toggles
+                    </h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {appFeaturesList.filter(f => Boolean(wizardForm.screenPermissions?.[f.key])).length} of {appFeaturesList.length} screens enabled for this client
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={resetToModeScreenDefaults}
+                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline px-2 py-1 rounded bg-indigo-50 border border-indigo-100"
+                      title="Reset screens to match the selected Solution Mode(s)"
+                    >
+                      ↺ Mode Defaults
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allOff = {};
+                        appFeaturesList.forEach(f => { allOff[f.key] = false; });
+                        setWizardForm({ ...wizardForm, screenPermissions: allOff });
+                      }}
+                      className="text-[11px] font-medium text-slate-500 hover:text-slate-700 hover:underline px-2 py-1 rounded bg-slate-100"
+                    >
+                      Deselect All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allOn = {};
+                        appFeaturesList.forEach(f => { allOn[f.key] = true; });
+                        setWizardForm({ ...wizardForm, screenPermissions: allOn });
+                      }}
+                      className="text-[11px] font-bold text-[#65a30d] hover:underline px-2 py-1 rounded bg-lime-50 border border-lime-200"
+                    >
+                      Select All 100%
+                    </button>
+                  </div>
+                </div>
+
+                {/* Dynamic Solution Mode & Business Type Governance */}
+                <div className="p-4 bg-gradient-to-r from-slate-50 via-emerald-50/20 to-lime-50/30 border border-slate-200 rounded-xl space-y-3.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <span>⚡</span> OAuth Token Endpoint
-                    </span>
-                    <span className="text-[11px] font-mono text-slate-400">POST /api/v1/oauth/token</span>
-                  </div>
-
-                  <div className="p-3 bg-slate-950 rounded-xl text-[11px] font-mono text-emerald-300 overflow-x-auto border border-slate-800 whitespace-pre">
-                    {`curl -X POST https://auth.renic.store/api/v1/oauth/token \\
-  -H "Content-Type: application/json" \\
-  -d '{"grant_type": "client_credentials", "client_id": "${wizardForm.clientId || 'rnc_cli_...'}", "client_secret": "${wizardForm.clientSecret ? wizardForm.clientSecret.substring(0, 14) + '...' : 'rnc_sec_...'}"}'`}
-                  </div>
-                </div>
-
-                {/* Zero-Trust Enforcement Switch */}
-                <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200 flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-xs text-emerald-950 flex items-center gap-1.5">
-                      <span>🛡️</span> Enforce Zero-Trust OAuth 2.0 Security Gate
+                    <div>
+                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <span className="text-base">🏢</span> Solution Modes &amp; Operational Profiles:
+                      </span>
+                      <span className="text-[11px] text-slate-500 block mt-0.5">
+                        Select one or multiple operational modes (checkboxes). Screens below will automatically configure based on your selections.
+                      </span>
                     </div>
-                    <p className="text-[11px] text-emerald-800 mt-0.5">
-                      When enabled, all screens except Settings will return a 403 Forbidden Gate until credentials are authenticated.
-                    </p>
-                  </div>
-
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={wizardForm.oauthEnforced}
-                      onChange={(e) => setWizardForm({ ...wizardForm, oauthEnforced: e.target.checked })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {/* ============ STEP 2: CUSTOMER IDENTITY & PROFILE ============ */}
-            {wizardStep === 'identity' && (
-              <div className="space-y-4">
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="label">Customer / Shop Name *</label>
-                    <input
-                      className="input font-semibold"
-                      value={wizardForm.name}
-                      onChange={(e) => handleNameChange(e.target.value)}
-                      placeholder="e.g. Saraswathi Silks &amp; Textiles"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="label">Customer Code / Subdomain Key *</label>
-                    <input
-                      className="input font-mono font-bold uppercase text-emerald-700 bg-slate-50"
-                      value={wizardForm.customerCode}
-                      onChange={(e) => setWizardForm({
-                        ...wizardForm,
-                        customerCode: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ''),
-                        subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '')
-                      })}
-                      placeholder="e.g. TX10 or SARASWAT-TX"
-                      required
-                    />
-                    <span className="text-[11px] text-slate-400 mt-1 block">
-                      Forms dedicated subdomain: <code className="font-bold text-emerald-700">{computedSmartUrl}</code>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="label">Contact Person Name</label>
-                    <input
-                      className="input"
-                      value={wizardForm.contact || wizardForm.pendingOwnerName || ''}
-                      onChange={(e) => setWizardForm({
-                        ...wizardForm,
-                        contact: e.target.value,
-                        pendingOwnerName: e.target.value
-                      })}
-                      placeholder="e.g. Ramesh Kumar"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="label">Login Mobile (Username) *</label>
-                    <input
-                      className="input font-semibold"
-                      value={wizardForm.pendingOwnerMobile || wizardForm.ownerMobile || ''}
-                      onChange={(e) => setWizardForm({
-                        ...wizardForm,
-                        pendingOwnerMobile: e.target.value,
-                        ownerMobile: e.target.value
-                      })}
-                      placeholder="e.g. 9876543210"
-                      required={wizardMode === 'create'}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="label">Admin Email *</label>
-                    <input
-                      className="input"
-                      type="email"
-                      value={wizardForm.pendingOwnerEmail || wizardForm.ownerEmail || ''}
-                      onChange={(e) => setWizardForm({
-                        ...wizardForm,
-                        pendingOwnerEmail: e.target.value,
-                        ownerEmail: e.target.value
-                      })}
-                      placeholder="e.g. ramesh@saraswathi.com"
-                      required={wizardMode === 'create'}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="label">
-                      {wizardMode === 'create' ? 'Admin Initial Password *' : 'Reset Password (Leave blank to retain)'}
-                    </label>
-                    <input
-                      className="input font-mono"
-                      type="password"
-                      value={wizardForm.pendingOwnerPassword || wizardForm.ownerPassword || ''}
-                      onChange={(e) => setWizardForm({
-                        ...wizardForm,
-                        pendingOwnerPassword: e.target.value,
-                        ownerPassword: e.target.value
-                      })}
-                      placeholder={wizardMode === 'create' ? 'Enter initial password...' : 'Leave blank to retain password'}
-                      required={wizardMode === 'create'}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="label">GSTIN / Tax Registration Number</label>
-                    <input
-                      className="input font-mono uppercase"
-                      value={wizardForm.gstNumber || ''}
-                      onChange={(e) => setWizardForm({ ...wizardForm, gstNumber: e.target.value.toUpperCase() })}
-                      placeholder="33AAAAA0000A1Z5"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="label">Plan Tier</label>
-                    <select
-                      className="input font-semibold"
-                      value={wizardForm.planTier}
-                      onChange={(e) => setWizardForm({ ...wizardForm, planTier: e.target.value })}
-                    >
-                      <option value="basic">Basic Tier (1 Floor, 3 Staff)</option>
-                      <option value="pro">Pro Tier (3 Floors, 10 Staff)</option>
-                      <option value="enterprise">Enterprise Tier (Unlimited)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="label">Billing Cycle</label>
-                    <select
-                      className="input font-semibold"
-                      value={wizardForm.billingCycle}
-                      onChange={(e) => setWizardForm({ ...wizardForm, billingCycle: e.target.value })}
-                    >
-                      <option value="1_MONTH">1 Month</option>
-                      <option value="3_MONTHS">3 Months (Quarterly)</option>
-                      <option value="6_MONTHS">6 Months (Half-Yearly)</option>
-                      <option value="1_YEAR">1 Year (Annual)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="label">License Status</label>
-                    <select
-                      className="input font-bold text-emerald-700"
-                      value={wizardForm.licenseStatus}
-                      onChange={(e) => setWizardForm({ ...wizardForm, licenseStatus: e.target.value })}
-                    >
-                      <option value="active">Active (Full Access)</option>
-                      <option value="pending_activation">Pending Activation</option>
-                      <option value="grace_period">Grace Period</option>
-                      <option value="locked">Locked / Suspended</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="label">Showroom Physical Address</label>
-                  <input
-                    className="input"
-                    value={wizardForm.address || ''}
-                    onChange={(e) => setWizardForm({ ...wizardForm, address: e.target.value })}
-                    placeholder="e.g. 14 Cross Cut Road, Gandhipuram, Coimbatore - 641012"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* ============ STEP 3: APPLICATION SELECTION & SMART SUBDOMAIN URL ============ */}
-            {wizardStep === 'routing' && (
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="label text-sm font-extrabold text-slate-800 !mb-0">
-                      Select Software Application (PaaS Catalog) *
-                    </label>
-                    <Link
-                      to="/applications"
-                      target="_blank"
-                      className="text-xs font-bold text-brand-600 hover:text-brand-800 flex items-center gap-1 hover:underline"
-                      title="Open Application Hub to register new software products or customize feature mappings"
-                    >
-                      <Icon name="store" className="w-3.5 h-3.5" />
-                      <span>Manage Apps &amp; Custom Features ↗</span>
+                    <Link to="/application-hub" className="text-[10px] font-bold text-emerald-700 hover:underline flex items-center gap-1 flex-shrink-0">
+                      ⚙️ Manage in Application Hub ↗
                     </Link>
                   </div>
-                  <div className="grid sm:grid-cols-3 gap-3">
-                    {apps.map((app) => {
-                      const isSelected = wizardForm.softwareProduct === app.appCode;
+
+                  {/* Mode Selection Checkbox Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                    {(currentWizardApp?.solutionModes || []).map((m) => {
+                      const isChecked = activeSolutionModesList.includes(m.modeKey);
                       return (
                         <div
-                          key={app.appCode}
-                          onClick={() => {
-                            const newPerms = initDefault100PercentPermissions(app);
-                            setWizardForm({
-                              ...wizardForm,
-                              softwareProduct: app.appCode,
-                              assignedPort: app.defaultPort || wizardForm.assignedPort,
-                              screenPermissions: newPerms
-                            });
-                          }}
-                          className={`p-4 rounded-2xl border cursor-pointer transition flex flex-col justify-between ${
-                            isSelected
-                              ? 'bg-slate-900 text-white border-emerald-500 shadow-md ring-2 ring-emerald-500/30'
-                              : 'bg-white text-slate-800 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                          key={m.modeKey}
+                          onClick={() => toggleSolutionMode(m.modeKey)}
+                          className={`p-3 rounded-xl border-2 cursor-pointer transition select-none flex flex-col justify-between ${
+                            isChecked
+                              ? 'bg-emerald-50/80 border-emerald-500 shadow-xs'
+                              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/70'
                           }`}
                         >
                           <div>
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                                isSelected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-100 text-slate-600'
-                              }`}>
-                                {app.category || 'Enterprise'}
-                              </span>
-                              <span className={`text-xs font-mono font-bold ${isSelected ? 'text-emerald-400' : 'text-slate-500'}`}>
-                                Port {app.defaultPort}
-                              </span>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-2xs flex-shrink-0"
+                                  style={{ backgroundColor: m.badgeColor || '#10b981' }}
+                                >
+                                  <Icon name={m.icon ? m.icon.toLowerCase() : 'box'} className="w-3.5 h-3.5" />
+                                </span>
+                                <div>
+                                  <span className="font-bold text-slate-900 text-xs block leading-tight">
+                                    {m.displayName || m.name || m.modeKey}
+                                  </span>
+                                  <span className="text-[10px] text-emerald-700 font-bold">
+                                    {m.defaultScreenKeys?.length || 0} screens
+                                  </span>
+                                </div>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {}} // Handled by outer container onClick
+                                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer pointer-events-none mt-0.5 flex-shrink-0"
+                              />
                             </div>
-                            <div className="font-black text-sm">{app.name}</div>
-                            <p className={`text-[11px] mt-1 line-clamp-2 ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
-                              {app.description || 'Enterprise software suite'}
-                            </p>
-                          </div>
-
-                          <div className="mt-3 pt-2 border-t border-slate-200/20 flex items-center justify-between text-[11px]">
-                            <span className="font-mono text-xs">slug: <b>{app.urlSlug || 'app'}</b></span>
-                            {isSelected && <span className="text-emerald-400 font-bold">✓ Selected</span>}
+                            {m.description && (
+                              <p className="text-[10px] text-slate-500 mt-2 line-clamp-2 leading-relaxed">
+                                {m.description}
+                              </p>
+                            )}
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                </div>
-
-                {/* Smart Subdomain URL Card */}
-                <div className="p-4 bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-900 text-white rounded-2xl border border-emerald-500/40 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">🌐</span>
-                        <h4 className="text-xs font-extrabold text-emerald-400 uppercase tracking-wider">
-                          Computed Smart Subdomain URL
-                        </h4>
-                      </div>
-                      <p className="text-[11px] text-slate-300 mt-0.5">
-                        Generated automatically using formula: <code className="text-emerald-300">&lt;appSlug&gt;.&lt;customerCode&gt;.renic.store</code>
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(computedSmartUrl);
-                        showSnackbar('Copied Smart Subdomain URL!');
-                      }}
-                      className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold"
-                    >
-                      Copy URL
-                    </button>
-                  </div>
-
-                  <div className="p-3 bg-slate-950 rounded-xl text-sm font-mono font-bold text-emerald-300 border border-slate-800 flex items-center justify-between">
-                    <span>{computedSmartUrl}</span>
-                    <span className="text-[10px] font-sans font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
-                      Active SaaS Edge
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="label">Target Terminal IP</label>
-                    <input
-                      className="input font-mono"
-                      value={wizardForm.targetIp}
-                      onChange={(e) => setWizardForm({ ...wizardForm, targetIp: e.target.value })}
-                      placeholder="127.0.0.1"
-                    />
-                    <span className="text-[11px] text-slate-400 mt-1 block">Localhost or showroom server LAN IP</span>
-                  </div>
-
-                  <div>
-                    <label className="label">Assigned Port *</label>
-                    <input
-                      type="number"
-                      className="input font-mono font-bold"
-                      value={wizardForm.assignedPort}
-                      onChange={(e) => setWizardForm({ ...wizardForm, assignedPort: Number(e.target.value) })}
-                      required
-                    />
-                    <span className="text-[11px] text-slate-400 mt-1 block">
-                      5174 (TextilePOS), 5173 (WhatsApp), 5176 (Challan)
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="label">Connection Routing Mode</label>
-                  <select
-                    className="input font-semibold"
-                    value={wizardForm.connectionType}
-                    onChange={(e) => setWizardForm({ ...wizardForm, connectionType: e.target.value })}
-                  >
-                    <option value="PORT_FORWARD_ROUTER">Port Forward Router (High-Speed Local Proxy)</option>
-                    <option value="CLOUDFLARE_TUNNEL">Cloudflare Tunnel (Zero-Trust Encrypted Edge)</option>
-                    <option value="LOCAL_LAN">Local LAN Wi-Fi Only</option>
-                  </select>
-                </div>
-              </div>
-            )}
-
-            {/* ============ STEP 4: FEATURE GOVERNANCE (100% PRE-CHECKED BY DEFAULT) ============ */}
-            {wizardStep === 'screens' && (
-              <div className="space-y-4">
-                <div className="p-4 bg-slate-900 text-white rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">🎛️</span>
-                      <h3 className="text-sm font-extrabold text-white">
-                        Feature Governance &amp; SaaS Tier Entitlements
-                      </h3>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40">
-                        100% Pre-Checked By Default
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                      All features of <b>{currentWizardApp?.name || 'Application'}</b> are automatically unlocked for maximum customer value. Uncheck specific modules only if you wish to enforce a restrictive SaaS tier.
+                  {(!currentWizardApp?.solutionModes || currentWizardApp.solutionModes.length === 0) && (
+                    <p className="text-[11px] text-amber-600 font-medium">
+                      ⚠️ No solution modes configured for this application yet. Manage them in Application Hub.
                     </p>
-                  </div>
+                  )}
 
-                  {/* 1-Click Preset Chips */}
-                  <div className="flex items-center gap-1.5 flex-wrap flex-shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const allPerms = {};
-                        appFeaturesList.forEach(f => { allPerms[f.key] = true; });
-                        setWizardForm(prev => ({ ...prev, screenPermissions: allPerms }));
-                        showSnackbar('Enabled 100% of features for customer!', 'info');
-                      }}
-                      className="px-2.5 py-1 text-[11px] font-extrabold rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition"
-                    >
-                      ✓ Select All (100%)
-                    </button>
+                  {/* Industry Business Type Template Selection (if active mode has business types) */}
+                  {(() => {
+                    const availableBts = (currentWizardApp?.solutionModes || [])
+                      .filter(m => activeSolutionModesList.includes(m.modeKey))
+                      .flatMap(m => m.businessTypes || []);
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const starter = {};
-                        appFeaturesList.forEach((f, idx) => { starter[f.key] = idx < 3; });
-                        setWizardForm(prev => ({ ...prev, screenPermissions: starter }));
-                        showSnackbar('Applied Starter Tier preset (Core modules only)', 'info');
-                      }}
-                      className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
-                    >
-                      Starter Tier
-                    </button>
+                    if (availableBts.length === 0) return null;
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const pro = {};
-                        appFeaturesList.forEach((f, idx) => { pro[f.key] = idx < 7; });
-                        setWizardForm(prev => ({ ...prev, screenPermissions: pro }));
-                        showSnackbar('Applied Pro Tier preset', 'info');
-                      }}
-                      className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
-                    >
-                      Pro Tier
-                    </button>
-                  </div>
-                </div>
-
-                {/* 2-Column Split: Feature Checkboxes (Left) + Live Customer Sidebar Simulator (Right) */}
-                <div className="grid lg:grid-cols-12 gap-4">
-                  {/* Left: Checkboxes */}
-                  <div className="lg:col-span-7 space-y-3 max-h-[380px] overflow-y-auto pr-1">
-                    {appFeaturesList.length > 0 ? (
-                      appFeaturesList.map((feature) => {
-                        const isChecked = wizardForm.screenPermissions[feature.key] !== false;
-                        return (
-                          <label
-                            key={feature.key}
-                            className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition select-none ${
-                              isChecked
-                                ? 'bg-white border-emerald-400 shadow-2xs ring-1 ring-emerald-500/20'
-                                : 'bg-slate-50 border-slate-200 opacity-60 hover:opacity-100'
-                            }`}
+                    return (
+                      <div className="pt-3 border-t border-slate-200/70 space-y-3">
+                        <div className="max-w-md">
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                            Industry Business Type Template (Terminology &amp; Action Buttons)
+                          </label>
+                          <select
+                            value={wizardForm.businessType || ''}
+                            onChange={(e) => {
+                              const btKey = e.target.value;
+                              const selectedBt = availableBts.find(b => b.typeKey === btKey) || {};
+                              setWizardForm({
+                                ...wizardForm,
+                                businessType: btKey,
+                                customTerminology: selectedBt || {}
+                              });
+                              if (selectedBt.displayName) {
+                                showSnackbar(`Applied terminology for "${selectedBt.displayName}"`, 'info');
+                              }
+                            }}
+                            className="w-full px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-emerald-500"
                           >
-                            <input
-                              type="checkbox"
-                              className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 mt-0.5 flex-shrink-0"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                setWizardForm(prev => ({
-                                  ...prev,
-                                  screenPermissions: {
-                                    ...prev.screenPermissions,
-                                    [feature.key]: e.target.checked
-                                  }
-                                }));
-                              }}
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="font-extrabold text-xs text-slate-900">{feature.label}</div>
-                                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
-                                  isChecked ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'
-                                }`}>
-                                  {isChecked ? 'Active' : '403 Blocked'}
+                            <option value="">-- Default / Generic Terminology --</option>
+                            {availableBts.map(b => (
+                              <option key={b.typeKey} value={b.typeKey}>
+                                {b.displayName || b.name || b.typeKey}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Live Terminology & Custom Button Preview */}
+                        {wizardForm.customTerminology && (wizardForm.customTerminology.displayName || wizardForm.customTerminology.staffLabel) && (
+                          <div className="p-3 bg-white rounded-lg border border-emerald-200/80 shadow-2xs space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-emerald-900 flex items-center gap-1.5">
+                                <span>✨</span> Live Dynamic UI &amp; Action Button Text Preview:
+                              </span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-emerald-100 text-emerald-800">
+                                {wizardForm.customTerminology.displayName || wizardForm.businessType}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-xs">
+                              <div className="bg-slate-50 p-2 rounded border border-slate-200">
+                                <span className="text-[10px] font-bold text-slate-500 block uppercase">Add Service Button</span>
+                                <span className="font-bold text-emerald-700 text-xs truncate block">
+                                  ➕ {wizardForm.customTerminology.addServiceBtnText || `Add ${wizardForm.customTerminology.serviceLabel || 'Service'}`}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500 font-mono">
-                                <span>{feature.category}</span>
-                                <span>·</span>
-                                <span className="text-slate-400">{feature.path || `/${feature.key}`}</span>
+
+                              <div className="bg-slate-50 p-2 rounded border border-slate-200">
+                                <span className="text-[10px] font-bold text-slate-500 block uppercase">Add Staff Button</span>
+                                <span className="font-bold text-indigo-700 text-xs truncate block">
+                                  ➕ {wizardForm.customTerminology.addStaffBtnText || `Add ${wizardForm.customTerminology.staffLabel || 'Staff'}`}
+                                </span>
                               </div>
-                              {feature.description && (
-                                <p className="text-[11px] text-slate-500 mt-1 leading-snug">
-                                  {feature.description}
-                                </p>
-                              )}
+
+                              <div className="bg-slate-50 p-2 rounded border border-slate-200">
+                                <span className="text-[10px] font-bold text-slate-500 block uppercase">Booking Action Button</span>
+                                <span className="font-bold text-amber-700 text-xs truncate block">
+                                  📅 {wizardForm.customTerminology.bookingActionLabel || 'New Walk-In Booking'}
+                                </span>
+                              </div>
                             </div>
-                          </label>
-                        );
-                      })
-                    ) : (
-                      <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 text-slate-400 text-xs">
-                        No individual feature mappings defined. All standard application routes will be granted.
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Right: Live Simulated Customer Sidebar Preview */}
-                  <div className="lg:col-span-5 bg-slate-950 text-white rounded-2xl p-4 border border-slate-800 flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                          <span className="text-xs font-bold text-slate-300">Live Customer Navigation Menu</span>
-                        </div>
-                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
-                          Simulator
-                        </span>
-                      </div>
-
-                      {/* Mock Brand Header */}
-                      <div className="py-3 border-b border-slate-900 flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-xs border border-emerald-500/30">
-                          {(wizardForm.name || 'R').charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-extrabold text-xs text-white truncate">
-                            {wizardForm.name || 'Customer Showroom'}
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-mono truncate">
-                            {computedSmartUrl}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Simulated Sidebar Links */}
-                      <div className="py-2 space-y-1 max-h-[220px] overflow-y-auto">
-                        {appFeaturesList
-                          .filter(f => wizardForm.screenPermissions[f.key] !== false)
-                          .map((f) => (
-                            <div
-                              key={f.key}
-                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 bg-slate-900/60 border border-slate-800/80 flex items-center justify-between"
-                            >
-                              <span className="truncate">{f.label}</span>
-                              <span className="text-[9px] font-mono text-emerald-400">OTA</span>
+                            <div className="flex items-center gap-4 text-[11px] text-slate-600 font-medium pt-1 border-t border-slate-100">
+                              <span>Staff: <strong className="text-slate-900">{wizardForm.customTerminology.staffLabel || 'Doctor'}</strong></span>
+                              <span>Service: <strong className="text-slate-900">{wizardForm.customTerminology.serviceLabel || 'Treatment'}</strong></span>
+                              <span>Client: <strong className="text-slate-900">{wizardForm.customTerminology.clientLabel || 'Patient'}</strong></span>
+                              <span>Slot: <strong className="text-slate-900">{wizardForm.customTerminology.defaultSlotDuration || 30} mins</strong></span>
                             </div>
-                          ))}
-
-                        {appFeaturesList.filter(f => wizardForm.screenPermissions[f.key] !== false).length === 0 && (
-                          <div className="py-8 text-center text-xs text-slate-500">
-                            No features enabled. Client will see empty portal.
                           </div>
                         )}
                       </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Screens Checklist Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {appFeaturesList.map((feat) => {
+                    const isEnabled = Boolean(wizardForm.screenPermissions?.[feat.key]);
+                    return (
+                      <label
+                        key={feat.key}
+                        className={`flex items-center justify-between p-2.5 rounded-lg border text-xs cursor-pointer transition select-none ${
+                          isEnabled
+                            ? 'bg-lime-50/40 border-lime-300 font-bold text-slate-900 shadow-2xs'
+                            : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                        }`}
+                      >
+                        <div>
+                          <span className={`block ${isEnabled ? 'text-slate-900 font-bold' : 'text-slate-500'}`}>
+                            {feat.label}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">{feat.key}</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={isEnabled}
+                          onChange={(e) => {
+                            setWizardForm({
+                              ...wizardForm,
+                              screenPermissions: {
+                                ...wizardForm.screenPermissions,
+                                [feat.key]: e.target.checked
+                              }
+                            });
+                          }}
+                          className="rounded text-[#65a30d] focus:ring-[#84cc16] w-4 h-4 cursor-pointer"
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* SECTION 4.1: Master Branch Topology & Enterprise Feature Entitlements (Master Level) */}
+                <div className="p-4 bg-slate-900 text-white rounded-xl border border-slate-800 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-lime-400 uppercase tracking-wider flex items-center gap-2">
+                        <span>🏛️</span> Master Branch Governance &amp; Enterprise Entitlements
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Strictly enforced by Renic Soft Master HQ over-the-air. Downstream client cannot self-enable.
+                      </p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-lime-500/20 text-lime-400 border border-lime-500/30">
+                      MASTER GOVERNED
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Branch Mode */}
+                    <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Branch Topology Mode</label>
+                      <select
+                        value={wizardForm.branchConfig?.mode || 'SINGLE'}
+                        onChange={(e) => setWizardForm({
+                          ...wizardForm,
+                          branchConfig: {
+                            ...(wizardForm.branchConfig || {}),
+                            mode: e.target.value,
+                            maxBranches: e.target.value === 'SINGLE' ? 1 : Math.max(2, wizardForm.branchConfig?.maxBranches || 3)
+                          }
+                        })}
+                        className="w-full px-2.5 py-1.5 text-xs font-bold rounded bg-slate-900 text-white border border-slate-700 focus:outline-none focus:border-lime-500"
+                      >
+                        <option value="SINGLE">Single Branch (Main Showroom)</option>
+                        <option value="MULTI">Multi-Branch Network (HQ + Branches)</option>
+                      </select>
+                      <span className="text-[10px] text-slate-400 block mt-1">
+                        {wizardForm.branchConfig?.mode === 'MULTI' ? 'Wildcard HQ access + sandboxed sub-branch URLs' : 'Single store kiosk mode'}
+                      </span>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
-                      <span>Enabled Features:</span>
-                      <strong className="text-emerald-400 font-mono">
-                        {appFeaturesList.filter(f => wizardForm.screenPermissions[f.key] !== false).length} / {appFeaturesList.length} Active
-                      </strong>
+                    {/* Max Branches Quota */}
+                    <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Max Branches Quota</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        disabled={wizardForm.branchConfig?.mode === 'SINGLE'}
+                        value={wizardForm.branchConfig?.maxBranches || 1}
+                        onChange={(e) => setWizardForm({
+                          ...wizardForm,
+                          branchConfig: {
+                            ...(wizardForm.branchConfig || {}),
+                            maxBranches: parseInt(e.target.value, 10) || 1
+                          }
+                        })}
+                        className="w-full px-2.5 py-1.5 text-xs font-bold rounded bg-slate-900 text-white border border-slate-700 focus:outline-none focus:border-lime-500 disabled:opacity-50"
+                      />
+                      <span className="text-[10px] text-slate-400 block mt-1">
+                        Licensed branch limit under single client ID
+                      </span>
+                    </div>
+
+                    {/* Inter-Branch Gold Transfer */}
+                    <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700 flex flex-col justify-between">
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-300 block">Inter-Branch Vault Transit</span>
+                        <span className="text-[10px] text-slate-400 block mt-0.5">Allow gold transfers between branches</span>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={wizardForm.branchConfig?.mode === 'SINGLE'}
+                        onClick={() => setWizardForm({
+                          ...wizardForm,
+                          branchConfig: {
+                            ...(wizardForm.branchConfig || {}),
+                            allowInterBranchTransfer: !wizardForm.branchConfig?.allowInterBranchTransfer
+                          }
+                        })}
+                        className={`w-full py-1 text-xs font-bold rounded mt-2 transition ${
+                          wizardForm.branchConfig?.allowInterBranchTransfer ? 'bg-lime-500 text-slate-950' : 'bg-slate-700 text-slate-300'
+                        } disabled:opacity-40`}
+                      >
+                        {wizardForm.branchConfig?.allowInterBranchTransfer ? 'ENABLED' : 'DISABLED'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Master Feature Gates */}
+                  <div className="pt-2 border-t border-slate-800">
+                    <span className="text-[11px] font-bold text-slate-300 block mb-2">Licensed Advanced Desks:</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                      {/* Partial Gold Release Gate */}
+                      <label className="flex items-center justify-between p-2.5 rounded bg-slate-800 border border-slate-700 cursor-pointer hover:border-slate-600">
+                        <div>
+                          <span className="font-bold text-white block">Partial Gold Release Desk</span>
+                          <span className="text-[10px] text-slate-400">Release selected items on partial payment</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(wizardForm.featurePermissions?.allowPartialRelease)}
+                          onChange={(e) => setWizardForm({
+                            ...wizardForm,
+                            featurePermissions: {
+                              ...(wizardForm.featurePermissions || {}),
+                              allowPartialRelease: e.target.checked
+                            }
+                          })}
+                          className="w-4 h-4 rounded text-lime-500 focus:ring-lime-400 cursor-pointer ml-2"
+                        />
+                      </label>
+
+                      {/* Re-Pledge Bank Refinance Gate */}
+                      <label className="flex items-center justify-between p-2.5 rounded bg-slate-800 border border-slate-700 cursor-pointer hover:border-slate-600">
+                        <div>
+                          <span className="font-bold text-white block">Bank Re-Pledge Desk</span>
+                          <span className="text-[10px] text-slate-400">Overdraft &amp; bank custody tracking</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(wizardForm.featurePermissions?.allowRePledge)}
+                          onChange={(e) => setWizardForm({
+                            ...wizardForm,
+                            featurePermissions: {
+                              ...(wizardForm.featurePermissions || {}),
+                              allowRePledge: e.target.checked
+                            }
+                          })}
+                          className="w-4 h-4 rounded text-lime-500 focus:ring-lime-400 cursor-pointer ml-2"
+                        />
+                      </label>
+
+                      {/* Anti-Fraud Blacklist Shield Gate */}
+                      <label className="flex items-center justify-between p-2.5 rounded bg-slate-800 border border-slate-700 cursor-pointer hover:border-slate-600">
+                        <div>
+                          <span className="font-bold text-white block">Fraud &amp; Stolen Gold Shield</span>
+                          <span className="text-[10px] text-slate-400">National pawn default blacklist</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(wizardForm.featurePermissions?.enableBlacklistShield)}
+                          onChange={(e) => setWizardForm({
+                            ...wizardForm,
+                            featurePermissions: {
+                              ...(wizardForm.featurePermissions || {}),
+                              enableBlacklistShield: e.target.checked
+                            }
+                          })}
+                          className="w-4 h-4 rounded text-lime-500 focus:ring-lime-400 cursor-pointer ml-2"
+                        />
+                      </label>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* ============ STEP 5: DYNAMIC ENGINE EXTENSIONS & PRE-FLIGHT CHECK ============ */}
-            {wizardStep === 'deployment' && (
-              <div className="space-y-4">
-                {/* Dynamic Extension: WhatsApp Bulk Dispatch Engine (ONLY for WhatsApp Automation) */}
-                {(wizardForm.softwareProduct === 'WHATSAPP_AUTOMATION' || smartAppSlug === 'wa') && (
-                  <div className="p-4 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">🚀</span>
-                          <h3 className="text-sm font-extrabold text-white">
-                            WhatsApp Bulk Dispatch Engine (Master Config Only)
-                          </h3>
+              {/* SECTION 4B (TEXTILE_POS ONLY): Field-Level Visibility & Required Control */}
+              {wizardForm.softwareProduct === 'TEXTILE_POS' && (
+                <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Icon name="dashboard" className="w-3.5 h-3.5 text-amber-600" /> 4B. Field Visibility &amp; Required Control
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Control which fields appear and which are required on POS screens. Changes apply per customer.</p>
+
+                  {/* Stock Import — Barcode Strategy */}
+                  <div className="border border-slate-200 rounded-lg p-3">
+                    <h4 className="text-xs font-bold text-slate-800 mb-1">Stock Import</h4>
+                    <p className="text-[11px] text-slate-500 mb-2">
+                      Decide how barcodes are minted when an Excel/CSV row has a quantity.
+                    </p>
+                    <label className="text-[11px] font-bold text-slate-600 block mb-1">Barcode Mode</label>
+                    <select
+                      value={wizardForm.fieldConfig?.stockImport?.barcodeMode?.value || 'perUnit'}
+                      onChange={(e) =>
+                        setWizardForm({
+                          ...wizardForm,
+                          fieldConfig: {
+                            ...wizardForm.fieldConfig,
+                            stockImport: {
+                              ...wizardForm.fieldConfig?.stockImport,
+                              barcodeMode: { value: e.target.value }
+                            }
+                          }
+                        })
+                      }
+                      className="w-full sm:max-w-xs border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 bg-white focus:ring-2 focus:ring-lime-400 focus:border-lime-500"
+                    >
+                      <option value="perUnit">One item = one barcode (qty 10 → 10 SKUs)</option>
+                      <option value="singleBarcode">Single barcode holds quantity (qty 10 → 1 SKU)</option>
+                    </select>
+                    <p className="text-[10px] text-slate-400 mt-1.5">
+                      Blank product name falls back to the generated SKU as the product name.
+                    </p>
+                  </div>
+
+                  {[
+                    {
+                      screenKey: 'billing',
+                      label: 'Billing Desk',
+                      fields: [
+                        { key: 'excelImport', label: 'Excel Import Button' }
+                      ]
+                    },
+                    {
+                      screenKey: 'stockAdd',
+                      label: 'Add Stock (Manual)',
+                      fields: [
+                        { key: 'supplier', label: 'Supplier' },
+                        { key: 'category', label: 'Fabric / Category' },
+                        { key: 'subCategory', label: 'Sub Category' },
+                        { key: 'productName', label: 'Product Name' }
+                      ]
+                    }
+                  ].map((screen) => (
+                    <div key={screen.screenKey} className="border border-slate-200 rounded-lg p-3">
+                      <h4 className="text-xs font-bold text-slate-800 mb-2">{screen.label}</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {screen.fields.map((field) => {
+                          const cfg = wizardForm.fieldConfig?.[screen.screenKey]?.[field.key] || { visible: true, required: false };
+                          return (
+                            <div key={field.key} className="flex items-center justify-between p-2 rounded-lg border border-slate-200 bg-slate-50">
+                              <span className="text-xs font-bold text-slate-700">{field.label}</span>
+                              <div className="flex items-center gap-3">
+                                <label className="flex items-center gap-1 text-[11px] text-slate-600 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={cfg.visible !== false}
+                                    onChange={(e) => {
+                                      setWizardForm({
+                                        ...wizardForm,
+                                        fieldConfig: {
+                                          ...wizardForm.fieldConfig,
+                                          [screen.screenKey]: {
+                                            ...wizardForm.fieldConfig?.[screen.screenKey],
+                                            [field.key]: { ...cfg, visible: e.target.checked }
+                                          }
+                                        }
+                                      });
+                                    }}
+                                    className="rounded text-[#65a30d] focus:ring-[#84cc16] w-3.5 h-3.5"
+                                  />
+                                  Visible
+                                </label>
+                                <label className="flex items-center gap-1 text-[11px] text-slate-600 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={cfg.required === true}
+                                    onChange={(e) => {
+                                      setWizardForm({
+                                        ...wizardForm,
+                                        fieldConfig: {
+                                          ...wizardForm.fieldConfig,
+                                          [screen.screenKey]: {
+                                            ...wizardForm.fieldConfig?.[screen.screenKey],
+                                            [field.key]: { ...cfg, required: e.target.checked }
+                                          }
+                                        }
+                                      });
+                                    }}
+                                    className="rounded text-[#65a30d] focus:ring-[#84cc16] w-3.5 h-3.5"
+                                  />
+                                  Required
+                                </label>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* SECTION 4B (WA_INSTA_AUTOMATION ONLY): WhatsApp Sender Engine & Throttle Governance */}
+              {wizardForm.softwareProduct === 'WA_INSTA_AUTOMATION' && (
+                <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Icon name="chat" className="w-3.5 h-3.5 text-emerald-600" /> 4B. WhatsApp Sender Engine &amp; Dispatch Governance
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Centrally assign the WhatsApp engine transport and rate limiting for this client instance.</p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Assigned Sender Engine Mode</label>
+                      <select
+                        value={wizardForm.whatsappSenderMode || 'DOCKER'}
+                        onChange={(e) => setWizardForm({ ...wizardForm, whatsappSenderMode: e.target.value })}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-lime-400 focus:border-lime-500"
+                      >
+                        <option value="DOCKER">🐳 Docker WAHA (Local QR Session Engine)</option>
+                        <option value="META">⚡ Official Meta WhatsApp Cloud API</option>
+                      </select>
+                      <span className="text-[10px] text-slate-400 block mt-1">
+                        {wizardForm.whatsappSenderMode === 'DOCKER'
+                          ? 'Client connects via WhatsApp Web QR scan on local container. Free outgoing messages.'
+                          : 'Client connects using Meta Developer credentials (Graph API). Pay-per-conversation.'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Docker Broadcast Throttle Delay (Seconds)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="60"
+                        value={wizardForm.dockerThrottleSeconds || 6}
+                        onChange={(e) => setWizardForm({ ...wizardForm, dockerThrottleSeconds: Number(e.target.value) || 6 })}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-lime-400 focus:border-lime-500"
+                      />
+                      <span className="text-[10px] text-slate-400 block mt-1">
+                        Pause duration between each outgoing bulk broadcast message to prevent WhatsApp bans.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 5: Engine & Diagnostics */}
+              <div id="sec-deployment" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 scroll-mt-6">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Icon name="license" className="w-3.5 h-3.5 text-teal-600" /> 5. Engine Health &amp; Pre-Flight Probe
+                </h3>
+
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <div>
+                    <span className="text-xs font-bold text-slate-800">Pre-Flight Diagnostic Verification</span>
+                    <p className="text-[11px] text-slate-500">Probe port connectivity, database isolation, and routing</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={runPreflightCheck}
+                    disabled={preflightLoading}
+                    className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded transition flex items-center gap-1"
+                  >
+                    <Icon name="refresh" className={`w-3.5 h-3.5 ${preflightLoading ? 'animate-spin text-emerald-400' : ''}`} />
+                    {preflightLoading ? 'Probing...' : 'Run Diagnostics'}
+                  </button>
+                </div>
+
+                {preflightResults && (
+                  <div className={`p-3.5 rounded-xl border space-y-3 ${
+                    preflightResults.passed 
+                      ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' 
+                      : (preflightResults.checks?.frontendReachable || preflightResults.checks?.backendReachable)
+                        ? 'bg-amber-50/80 border-amber-200 text-amber-950'
+                        : 'bg-rose-50/80 border-rose-200 text-rose-950'
+                  }`}>
+                    {/* Header Banner */}
+                    <div className="flex items-center justify-between pb-2 border-b border-black/5">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${
+                          preflightResults.passed ? 'bg-emerald-500 animate-pulse' : (preflightResults.checks?.frontendReachable || preflightResults.checks?.backendReachable) ? 'bg-amber-500' : 'bg-rose-500'
+                        }`} />
+                        <span className="font-bold text-xs">
+                          {preflightResults.passed 
+                            ? 'All Diagnostic Probes Passed — Instance Healthy' 
+                            : 'Pre-Flight Diagnostic Warnings Detected'}
+                        </span>
+                      </div>
+                      <span className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                        preflightResults.passed 
+                          ? 'bg-emerald-600 text-white' 
+                          : (preflightResults.checks?.frontendReachable || preflightResults.checks?.backendReachable)
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-rose-600 text-white'
+                      }`}>
+                        {preflightResults.healthScore ? `${preflightResults.healthScore}% HEALTH` : (preflightResults.passed ? '100% HEALTH' : '0% HEALTH')}
+                      </span>
+                    </div>
+
+                    {/* Detailed Probe Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      {/* Frontend Server Check */}
+                      <div className="bg-white/80 p-2.5 rounded-lg border border-black/5 flex items-start gap-2">
+                        <span className="text-base leading-none mt-0.5">
+                          {preflightResults.checks?.frontendReachable ? '🟢' : '🔴'}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold block text-slate-800">
+                            Frontend Dev Server (Port {currentWizardPort})
+                          </span>
+                          <span className="text-[11px] text-slate-500 block">
+                            {preflightResults.checks?.frontendReachable 
+                              ? `Active • ${preflightResults.checks?.frontendLatencyMs || 0}ms latency` 
+                              : `Offline • Port ${currentWizardPort} refused connection`}
+                          </span>
                         </div>
-                        <p className="text-xs text-slate-300 mt-0.5">
-                          Governs promotional broadcast sender type. This configuration is protected and completely hidden from tenant clients.
-                        </p>
+                      </div>
+
+                      {/* Backend Server Check */}
+                      <div className="bg-white/80 p-2.5 rounded-lg border border-black/5 flex items-start gap-2">
+                        <span className="text-base leading-none mt-0.5">
+                          {preflightResults.checks?.backendReachable ? '🟢' : '🔴'}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold block text-slate-800">
+                            Backend API Engine (Port {currentWizardBackendPort})
+                          </span>
+                          <span className="text-[11px] text-slate-500 block">
+                            {preflightResults.checks?.backendReachable 
+                              ? `Operational • ${preflightResults.checks?.backendLatencyMs || 0}ms latency` 
+                              : `Offline • Port ${currentWizardBackendPort} unreachable`}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Subdomain Uniqueness */}
+                      <div className="bg-white/80 p-2.5 rounded-lg border border-black/5 flex items-start gap-2">
+                        <span className="text-base leading-none mt-0.5">
+                          {preflightResults.checks?.subdomainUnique ? '🟢' : '🔴'}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold block text-slate-800">
+                            Customer Identifier [{cleanCustomerCode.toUpperCase()}]
+                          </span>
+                          <span className="text-[11px] text-slate-500 block">
+                            {preflightResults.checks?.subdomainUnique 
+                              ? 'Unique & Available for Dedicated Routing' 
+                              : (preflightResults.checks?.subdomainMessage || 'Conflict with existing customer')}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Master Gateway Reverse Proxy */}
+                      <div className="bg-white/80 p-2.5 rounded-lg border border-black/5 flex items-start gap-2">
+                        <span className="text-base leading-none mt-0.5">🟢</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold block text-slate-800">
+                            Renic Soft Gateway (:5050)
+                          </span>
+                          <span className="text-[11px] text-slate-500 block">
+                            Multi-tenant reverse proxy online &amp; ready
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 gap-3 pt-1">
-                      <label
-                        onClick={() => setWizardForm({ ...wizardForm, whatsappSenderMode: 'META' })}
-                        className={`p-3 rounded-xl border text-left cursor-pointer transition flex flex-col justify-between ${
-                          wizardForm.whatsappSenderMode === 'META'
-                            ? 'bg-emerald-950/60 border-emerald-500 text-white shadow-sm'
-                            : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:border-slate-600'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="font-bold text-xs flex items-center gap-1.5">
-                            <span>🌐</span> Meta Cloud API (Official)
-                          </span>
-                          <input
-                            type="radio"
-                            name="whatsappSenderMode"
-                            checked={wizardForm.whatsappSenderMode === 'META'}
-                            onChange={() => setWizardForm({ ...wizardForm, whatsappSenderMode: 'META' })}
-                            className="text-emerald-500 focus:ring-emerald-400"
-                          />
-                        </div>
-                        <p className="text-[11px] text-slate-400 leading-relaxed">
-                          Official Meta verified sender. High throughput with Meta Business Suite templates.
-                        </p>
-                      </label>
-
-                      <label
-                        onClick={() => setWizardForm({ ...wizardForm, whatsappSenderMode: 'DOCKER' })}
-                        className={`p-3 rounded-xl border text-left cursor-pointer transition flex flex-col justify-between ${
-                          wizardForm.whatsappSenderMode === 'DOCKER'
-                            ? 'bg-blue-950/60 border-blue-500 text-white shadow-sm'
-                            : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:border-slate-600'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="font-bold text-xs flex items-center gap-1.5">
-                            <span>🐳</span> Docker WAHA (Web QR)
-                          </span>
-                          <input
-                            type="radio"
-                            name="whatsappSenderMode"
-                            checked={wizardForm.whatsappSenderMode === 'DOCKER'}
-                            onChange={() => setWizardForm({ ...wizardForm, whatsappSenderMode: 'DOCKER' })}
-                            className="text-blue-500 focus:ring-blue-400"
-                          />
-                        </div>
-                        <p className="text-[11px] text-slate-400 leading-relaxed">
-                          Local Docker container. Zero Meta approval delays for dynamic promotions.
-                        </p>
-                      </label>
-                    </div>
-
-                    {wizardForm.whatsappSenderMode === 'DOCKER' && (
-                      <div className="p-3 bg-blue-900/40 rounded-xl border border-blue-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                        <div>
-                          <div className="font-bold text-blue-200 flex items-center gap-1.5">
-                            <span>⏱️</span> Anti-Ban Safety Throttle
-                          </div>
-                          <p className="text-[11px] text-blue-300 mt-0.5">
-                            Delays dispatch between each recipient to protect the WhatsApp account from bans.
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            min="3"
-                            max="60"
-                            className="input !py-1 !px-2 w-20 text-center font-mono font-bold bg-slate-900 text-white border-blue-500"
-                            value={wizardForm.dockerThrottleSeconds || 6}
-                            onChange={(e) => setWizardForm({ ...wizardForm, dockerThrottleSeconds: Number(e.target.value) || 6 })}
-                          />
-                          <span className="text-blue-200 font-semibold text-xs">Seconds</span>
-                        </div>
+                    {/* Actionable Error Guidance */}
+                    {!preflightResults.passed && (!preflightResults.checks?.frontendReachable || !preflightResults.checks?.backendReachable) && (
+                      <div className="p-2 bg-amber-100/70 border border-amber-200 rounded-lg text-[11px] text-amber-900 leading-relaxed">
+                        <strong>💡 How to resolve offline status:</strong> Make sure the target application dev server is running (e.g., in <code>d:\Development\{wizardForm.softwareProduct === 'SIMPLE_BILLING' ? 'Simple_Billing' : (wizardForm.softwareProduct === 'PAWN_BROKING' ? 'pawn_broking' : (wizardForm.softwareProduct === 'TEXTILE_POS' ? 'TextilePOS' : 'WA_INSTA_AUTOMATION'))}</code> run <code>npm run dev</code>).
                       </div>
                     )}
                   </div>
                 )}
-
-                {/* Dynamic Extension: POS Stock & Billing (ONLY for Textile POS) */}
-                {(wizardForm.softwareProduct === 'TEXTILE_POS' || smartAppSlug === 'pos') && (
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                    <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                      <span>🏷️</span> Textile POS Stock &amp; Sizing Configuration
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                      <label className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={wizardForm.stockConfig?.enableSizes || false}
-                          onChange={(e) => setWizardForm({
-                            ...wizardForm,
-                            stockConfig: { ...wizardForm.stockConfig, enableSizes: e.target.checked }
-                          })}
-                          className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
-                        />
-                        <span>Enable Sizes (S, M, L, XL)</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={wizardForm.stockConfig?.enableColors || false}
-                          onChange={(e) => setWizardForm({
-                            ...wizardForm,
-                            stockConfig: { ...wizardForm.stockConfig, enableColors: e.target.checked }
-                          })}
-                          className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
-                        />
-                        <span>Enable Colors</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={wizardForm.stockConfig?.enableMeters || false}
-                          onChange={(e) => setWizardForm({
-                            ...wizardForm,
-                            stockConfig: { ...wizardForm.stockConfig, enableMeters: e.target.checked }
-                          })}
-                          className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
-                        />
-                        <span>Enable Meter Cutting</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={wizardForm.pricingConfig?.trackProfit !== false}
-                          onChange={(e) => setWizardForm({
-                            ...wizardForm,
-                            pricingConfig: { ...wizardForm.pricingConfig, trackProfit: e.target.checked }
-                          })}
-                          className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
-                        />
-                        <span>Track Profit Margins</span>
-                      </label>
-                    </div>
-                  </div>
-                )}
-
-                {/* Free Trial Sandbox Mode */}
-                <div className="p-4 bg-amber-50/80 rounded-2xl border border-amber-200">
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={wizardForm.isTrial}
-                        onChange={(e) => setWizardForm({
-                          ...wizardForm,
-                          isTrial: e.target.checked,
-                          databaseName: e.target.checked ? 'renic_trial_sandbox' : `renic_tenant_${(wizardForm.customerCode || '').toLowerCase()}`
-                        })}
-                        className="rounded text-amber-600 focus:ring-amber-500 w-4 h-4"
-                      />
-                      <span className="text-xs font-bold text-amber-900">
-                        🟡 Free Trial Mode (Isolated Sandbox DB)
-                      </span>
-                    </label>
-                  </div>
-
-                  <div className="mt-2 text-[11px] text-amber-800 font-mono">
-                    Target MongoDB: <strong>{wizardForm.databaseName || (wizardForm.isTrial ? 'renic_trial_sandbox' : `renic_tenant_${(wizardForm.customerCode || '').toLowerCase()}`)}</strong>
-                  </div>
-                </div>
-
-                {/* Automated Pre-Flight Check Card */}
-                <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">🩺</span>
-                        <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-                          Automated Pre-Flight Infrastructure Diagnostics
-                        </h4>
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Validates subdomain availability, port reachability, and Docker container readiness before launch.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={preflightLoading}
-                      onClick={runPreflightCheck}
-                      className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
-                    >
-                      <Icon name="refresh" className={`w-3 h-3 ${preflightLoading ? 'animate-spin text-emerald-400' : ''}`} />
-                      <span>{preflightLoading ? 'Probing Infrastructure...' : 'Run Diagnostics'}</span>
-                    </button>
-                  </div>
-
-                  {preflightResults ? (
-                    <div className="grid sm:grid-cols-3 gap-2.5 pt-1">
-                      {/* Check 1: Domain / Subdomain */}
-                      <div className={`p-3 rounded-xl border text-xs ${
-                        preflightResults.checks?.subdomainAvailable
-                          ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                          : 'bg-amber-50 border-amber-200 text-amber-900'
-                      }`}>
-                        <div className="font-extrabold flex items-center gap-1.5">
-                          <span>{preflightResults.checks?.subdomainAvailable ? '✓' : '⚠️'}</span>
-                          <span>Subdomain Uniqueness</span>
-                        </div>
-                        <div className="text-[11px] mt-1 font-mono truncate">
-                          {computedSmartUrl}
-                        </div>
-                        <div className="text-[10px] mt-0.5 opacity-80">
-                          {preflightResults.checks?.subdomainAvailable ? 'Available for provisioning' : 'In use or active'}
-                        </div>
-                      </div>
-
-                      {/* Check 2: Port & Gateway */}
-                      <div className="p-3 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-900 text-xs">
-                        <div className="font-extrabold flex items-center gap-1.5">
-                          <span>✓</span>
-                          <span>Port &amp; Reverse Proxy</span>
-                        </div>
-                        <div className="text-[11px] mt-1 font-mono">
-                          Port {wizardForm.assignedPort} · Ready
-                        </div>
-                        <div className="text-[10px] mt-0.5 opacity-80">
-                          Local router standby
-                        </div>
-                      </div>
-
-                      {/* Check 3: Engine Readiness */}
-                      <div className="p-3 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-900 text-xs">
-                        <div className="font-extrabold flex items-center gap-1.5">
-                          <span>✓</span>
-                          <span>Application Engine</span>
-                        </div>
-                        <div className="text-[11px] mt-1 font-mono">
-                          {wizardForm.softwareProduct}
-                        </div>
-                        <div className="text-[10px] mt-0.5 opacity-80">
-                          Isolated multi-tenant ready
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-4 text-center bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500">
-                      Click <b>&quot;Run Diagnostics&quot;</b> to verify network routes and MongoDB tenant isolation before launching.
-                    </div>
-                  )}
-                </div>
               </div>
-            )}
-          </form>
-        </Modal>
+            </form>
+          </div>
+
+          {/* 4. Action Footer */}
+          <div className="p-3 bg-white border-t border-slate-200 flex items-center justify-end gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setWizardOpen(false)}
+              className="px-4 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleWizardSubmit}
+              disabled={wizardSubmitting}
+              className="px-5 py-1.5 text-xs font-bold text-white bg-[#84cc16] hover:bg-[#65a30d] rounded shadow-xs transition flex items-center gap-1.5"
+            >
+              {wizardSubmitting ? (
+                <>
+                  <Icon name="refresh" className="w-3.5 h-3.5 animate-spin" /> Saving...
+                </>
+              ) : (
+                'Save & Push OTA'
+              )}
+            </button>
+          </div>
+        </div>
       )}
 
-
-
-      {/* ============ OAuth 2.0 Postman Test Kit Modal ============ */}
-      {oauthModalOpen && (
-        <Modal
-          open={oauthModalOpen}
-          onClose={() => setOauthModalOpen(false)}
-          title={`🔑 OAuth 2.0 Credentials & Postman Kit: ${selectedClient?.name || ''}`}
-          maxWidth="max-w-3xl"
-          footer={
-            <div className="flex items-center justify-between w-full">
-              <span className="text-xs text-slate-500 font-medium">RFC 6749 Machine-to-Machine Token Flow</span>
-              <button className="btn-primary !px-5" onClick={() => setOauthModalOpen(false)}>Done</button>
-            </div>
-          }
-        >
-          {oauthLoading ? (
-            <div className="py-12 text-center text-slate-400">Loading OAuth credentials...</div>
-          ) : oauthData ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-slate-900 text-white rounded-2xl flex items-center justify-between">
-                <div>
-                  <div className="font-extrabold text-base">{oauthData.clientName}</div>
-                  <div className="text-xs text-slate-400 font-mono mt-0.5">Customer Code: {oauthData.customerCode}</div>
-                </div>
-                <span className="text-xs px-2.5 py-1 bg-emerald-500/20 text-emerald-400 font-mono font-bold rounded-lg border border-emerald-500/30">
-                  Active in Renic HQ
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">Client ID</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      readOnly
-                      className="input font-mono font-bold bg-slate-50 text-slate-800"
-                      value={oauthData.clientId}
-                    />
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(oauthData.clientId);
-                        showSnackbar('Client ID copied!');
-                      }}
-                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">Client Secret</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type={showSecret ? 'text' : 'password'}
-                      readOnly
-                      className="input font-mono font-bold bg-slate-50 text-slate-800"
-                      value={oauthData.clientSecret}
-                    />
-                    <button
-                      onClick={() => setShowSecret(!showSecret)}
-                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700"
-                    >
-                      {showSecret ? 'Hide' : 'Show'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(oauthData.clientSecret);
-                        showSnackbar('Client Secret copied!');
-                      }}
-                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">Token Endpoint (cURL Test)</label>
-                  <div className="p-3 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl overflow-x-auto whitespace-pre">
-                    {`curl -X POST ${window.location.origin}/api/v1/oauth/token \\
-  -H "Content-Type: application/json" \\
-  -d '{"grant_type": "client_credentials", "client_id": "${oauthData.clientId}", "client_secret": "${oauthData.clientSecret}"}'`}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </Modal>
-      )}
-
-      {/* ============ Onboard Success & 1-Click WhatsApp Welcome Kit Modal ============ */}
+      {/* ============ NEW INSTANCE CREDENTIAL HANDOVER ============
+          setCreatedCreds() was populated on create but never rendered, so the
+          operator had no way to see the clientId/clientSecret/DB name that
+          were actually provisioned. This modal is that missing handover. */}
       {createdCreds && (
         <Modal
-          open={!!createdCreds}
-          onClose={() => setCreatedCreds(null)}
-          title={`🎉 Customer Instance Launched: ${createdCreds.clientName}`}
+          open
+          onClose={() => { setCreatedCreds(null); setRevealSecret(false); }}
+          title="Instance launched — credential handover"
           maxWidth="max-w-xl"
           footer={
-            <div className="flex items-center justify-between w-full">
+            <>
               <button
+                type="button"
                 onClick={() => {
-                  const mobile = (createdCreds.mobile || '').replace(/[^0-9]/g, '');
-                  const text = `*🎉 Welcome to Renic Platform!*\nYour dedicated portal is active.\n\n*Customer Code:* ${createdCreds.customerCode}\n*Dedicated Portal:* ${createdCreds.hostingUrl}\n*Isolated DB:* ${createdCreds.dbName}\n\n*API & OAuth Credentials:*\n- *Client ID:* ${createdCreds.clientId}\n- *Secret Key:* ${createdCreds.clientSecret}`;
-                  const waUrl = mobile ? `https://wa.me/${mobile}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
-                  window.open(waUrl, '_blank');
+                  navigator.clipboard.writeText([
+                    `Customer: ${createdCreds.clientName || '-'} (${createdCreds.customerCode || '-'})`,
+                    `Portal URL: ${createdCreds.hostingUrl || '-'}`,
+                    `Database: ${createdCreds.dbName || '-'}`,
+                    `Client ID: ${createdCreds.clientId || '-'}`,
+                    `Client Secret: ${createdCreds.clientSecret || '-'}`,
+                    `Admin Email: ${createdCreds.email || '-'}`,
+                    `Initial Password: ${createdCreds.password || '-'}`,
+                    `Owner Mobile: ${createdCreds.mobile || '-'}`
+                  ].join('\n'));
+                  showSnackbar('All credentials copied to clipboard', 'success');
                 }}
-                className="btn-primary !bg-emerald-600 hover:!bg-emerald-700 text-white !px-4 !py-2 text-xs flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded transition"
               >
-                <Icon name="whatsapp" className="w-4 h-4" /> Share via WhatsApp
+                Copy everything
               </button>
-              <button className="btn-secondary !px-4" onClick={() => setCreatedCreds(null)}>Done</button>
-            </div>
+              <button
+                type="button"
+                onClick={() => { setCreatedCreds(null); setRevealSecret(false); }}
+                className="px-5 py-2 text-xs font-bold text-white bg-[#84cc16] hover:bg-[#65a30d] rounded shadow-xs transition"
+              >
+                Done
+              </button>
+            </>
           }
         >
-          <div className="space-y-4 text-xs">
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800">
-              <div className="font-bold text-sm">Dedicated Database Initialized!</div>
-              <p className="mt-0.5">Database <code className="font-mono font-bold">{createdCreds.dbName}</code> was automatically created and seeded. Zero data crossover with other clients.</p>
+          <div className="space-y-4">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-semibold text-amber-800 leading-relaxed">
+              Copy these now and hand them to the customer once. The secret and password are not
+              retrievable from this screen after you close it.
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <span className="text-gray-500 font-semibold uppercase text-[10px]">Customer SaaS Hosting URL</span>
-                <div className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-lg font-mono font-bold text-brand-700 mt-1">
-                  <span className="truncate pr-2">{createdCreds.hostingUrl}</span>
-                  <button onClick={() => { navigator.clipboard.writeText(createdCreds.hostingUrl); showSnackbar('Copied Hosting URL!'); }}>
-                    <Icon name="copy" className="w-4 h-4 text-gray-500 hover:text-gray-800" />
-                  </button>
+            <dl className="divide-y divide-gray-100 rounded-lg border border-gray-100">
+              {[
+                ['Customer', createdCreds.clientName, false],
+                ['Customer code', createdCreds.customerCode, false],
+                ['Portal URL', createdCreds.hostingUrl, true],
+                ['Database', createdCreds.dbName, true],
+                ['Admin Email', createdCreds.email, true],
+                ['Initial Password', createdCreds.password, true],
+                ['Client ID', createdCreds.clientId, true],
+                ['Owner mobile', createdCreds.mobile, false]
+              ].map(([label, value, copyable]) => (
+                <div key={label} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <dt className="w-32 shrink-0 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                    {label}
+                  </dt>
+                  <dd className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                    <span className="break-all text-right font-mono text-xs text-slate-800">{value || '—'}</span>
+                    {copyable && <CopyBtn text={value || ''} showLabel={false} className="!p-1.5" />}
+                  </dd>
                 </div>
-              </div>
+              ))}
+            </dl>
 
-              <div>
-                <span className="text-gray-500 font-semibold uppercase text-[10px]">Renic Client ID</span>
-                <div className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-lg font-mono text-gray-800 mt-1">
-                  <span className="truncate pr-2">{createdCreds.clientId}</span>
-                  <button onClick={() => { navigator.clipboard.writeText(createdCreds.clientId); showSnackbar('Copied Client ID!'); }}>
-                    <Icon name="copy" className="w-4 h-4 text-gray-500 hover:text-gray-800" />
-                  </button>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Client secret</div>
+                  <div className="mt-1 break-all font-mono text-xs text-slate-800">
+                    {revealSecret ? (createdCreds.clientSecret || '—') : '••••••••••••••••••••••••'}
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <span className="text-gray-500 font-semibold uppercase text-[10px]">Renic Secret Key</span>
-                <div className="flex items-center justify-between p-2 bg-gray-50 border border-gray-200 rounded-lg font-mono text-gray-800 mt-1">
-                  <span className="select-all break-all pr-2 text-xs">{createdCreds.clientSecret}</span>
-                  <button onClick={() => { navigator.clipboard.writeText(createdCreds.clientSecret); showSnackbar('Copied Client Secret!'); }}>
-                    <Icon name="copy" className="w-4 h-4 text-blue-600 hover:text-blue-800 flex-shrink-0" />
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setRevealSecret(v => !v)}
+                    className="rounded border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-600 transition hover:bg-slate-100"
+                  >
+                    {revealSecret ? 'Hide' : 'Reveal'}
                   </button>
+                  <CopyBtn text={createdCreds.clientSecret || ''} showLabel={false} className="!p-1.5" />
                 </div>
               </div>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* ============ CONVERT TRIAL TO PRODUCTION MODAL ============ */}
+      {convertModalOpen && clientToConvert && (
+        <Modal
+          open={convertModalOpen}
+          onClose={() => { setConvertModalOpen(false); setClientToConvert(null); }}
+          title="⭐ Upgrade & Convert Trial to Dedicated Production"
+          maxWidth="max-w-lg"
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={() => { setConvertModalOpen(false); setClientToConvert(null); }}
+                className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConvertTrialSubmit}
+                disabled={convertSubmitting}
+                className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded shadow-xs transition flex items-center gap-1.5"
+              >
+                {convertSubmitting ? (
+                  <>
+                    <Icon name="refresh" className="w-3.5 h-3.5 animate-spin" /> Migrating Data...
+                  </>
+                ) : (
+                  '🚀 Upgrade & Migrate to Production'
+                )}
+              </button>
+            </>
+          }
+        >
+          <form onSubmit={handleConvertTrialSubmit} className="space-y-4">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs space-y-1">
+              <div className="font-bold text-amber-900 flex items-center justify-between">
+                <span>Customer: {clientToConvert.name}</span>
+                <span className="font-mono text-[10px] px-1.5 py-0.5 bg-amber-200 rounded font-bold">{clientToConvert.customerCode}</span>
+              </div>
+              <p className="text-[11px] text-amber-800">
+                Current Trial Sandbox: <code className="font-mono font-bold">{clientToConvert.databaseName || `renic_trial_${(clientToConvert.customerCode || '').toLowerCase()}`}</code>
+              </p>
+              <p className="text-[11px] text-emerald-800 font-medium">
+                Target Production DB: <code className="font-mono font-bold">renic_tenant_{(clientToConvert.customerCode || '').toLowerCase()}</code>
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Select Production Plan Tier *</label>
+                <select
+                  value={convertForm.planTier}
+                  onChange={e => setConvertForm({ ...convertForm, planTier: e.target.value })}
+                  required
+                  className="w-full px-3 py-1.5 text-xs font-bold rounded border border-slate-300 bg-white"
+                >
+                  <option value="basic">Standard Basic Tier</option>
+                  <option value="pro">Professional (Pro) Tier</option>
+                  <option value="enterprise">Enterprise Tier</option>
+                  {availablePlanTiers
+                    .filter(p => !clientToConvert.softwareProduct || p.appCode === clientToConvert.softwareProduct)
+                    .map(plan => (
+                      <option key={plan._id || plan.code} value={plan.code}>
+                        {plan.name} (₹{plan.price?.toLocaleString()})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Billing Cycle *</label>
+                <select
+                  value={convertForm.billingCycle}
+                  onChange={e => {
+                    const cycle = e.target.value;
+                    const daysMap = {
+                      '1_MONTH': 30,
+                      '3_MONTHS': 90,
+                      '6_MONTHS': 180,
+                      '1_YEAR': 365,
+                      'LIFETIME': 3650
+                    };
+                    setConvertForm({
+                      ...convertForm,
+                      billingCycle: cycle,
+                      subscriptionDays: daysMap[cycle] || 365
+                    });
+                  }}
+                  className="w-full px-3 py-1.5 text-xs font-bold rounded border border-slate-300 bg-white"
+                >
+                  <option value="1_MONTH">1 Month (Monthly)</option>
+                  <option value="3_MONTHS">3 Months (Quarterly)</option>
+                  <option value="6_MONTHS">6 Months (Half-Yearly)</option>
+                  <option value="1_YEAR">1 Year (Annual)</option>
+                  <option value="LIFETIME">Lifetime / Enterprise</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Subscription Days Active</label>
+              <input
+                type="number"
+                min="1"
+                max="3650"
+                value={convertForm.subscriptionDays}
+                onChange={e => setConvertForm({ ...convertForm, subscriptionDays: parseInt(e.target.value, 10) || 365 })}
+                required
+                className="w-full px-3 py-1.5 text-xs font-bold rounded border border-slate-300"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Payment Reference / Notes (Optional)</label>
+              <input
+                type="text"
+                value={convertForm.paymentReference}
+                onChange={e => setConvertForm({ ...convertForm, paymentReference: e.target.value })}
+                placeholder="e.g. UPI / Bank Ref #981249712"
+                className="w-full px-3 py-1.5 text-xs font-medium rounded border border-slate-300"
+              />
+            </div>
+
+            <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-emerald-900 text-xs space-y-1">
+              <p className="font-bold flex items-center gap-1">
+                ✅ What happens during conversion:
+              </p>
+              <ul className="list-disc pl-4 text-[11px] text-slate-600 space-y-0.5">
+                <li>All trial data (services, staff, appointments, campaigns, chats) will be deep-copied directly into dedicated production DB.</li>
+                <li>Customer status upgraded to <strong>ACTIVE</strong> with clean production routing.</li>
+                <li>Temporary trial sandbox <code className="font-mono text-[10px] bg-slate-100 px-1 py-0.2 rounded">renic_trial_*</code> will be safely dropped.</li>
+                <li>Instant OTA configuration push broadcasted.</li>
+              </ul>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

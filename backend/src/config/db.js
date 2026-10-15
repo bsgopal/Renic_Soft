@@ -3,28 +3,45 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-let isMock = process.env.MOCK_DB === 'true';
-
 /**
- * Connect to MongoDB. If it fails or MOCK_DB is enabled,
- * the app silently falls back to a local JSON file store
- * so the application always runs.
+ * Connect to MongoDB.
+ *
+ * There is deliberately NO silent fallback to the local JSON file store
+ * (data/mockDb.json). Falling back on a failed connection would make every
+ * API serve hardcoded/stale file data instead of the customer's real tenant
+ * data — a correctness and isolation hazard. So the process fails fast.
+ *
+ * MOCK_DB=true stays available as an explicit opt-in for the test suite only;
+ * it must never be set automatically as a side effect of an error.
  */
 export const connectDB = async () => {
-  if (isMock) {
-    console.log('[Database Mode]: MOCK (Local JSON File Persistence)');
+  if (process.env.MOCK_DB === 'true') {
+    console.warn('[Database Mode]: MOCK (explicit MOCK_DB=true) — tests/dev only');
     return;
   }
 
-  try {
-    const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/renic_soft';
-    await mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 });
-    console.log('[Database Mode]: MONGODB Connected');
-  } catch (err) {
-    isMock = true;
-    process.env.MOCK_DB = 'true';
-    console.warn('\x1b[33m[MongoDB unavailable]', err.message, '- falling back to MOCK (Local JSON File Store)\x1b[0m');
+  if (mongoose.connection.readyState === 1) {
+    return;
   }
+
+  const attempts = 3;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/renic_soft';
+      await mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 });
+      console.log('[Database Mode]: MONGODB Connected');
+      return;
+    } catch (err) {
+      console.warn(`[MongoDB attempt ${attempt}/${attempts}]: ${err.message}`);
+      if (attempt < attempts) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
+  }
+
+  console.error('[Fatal] MongoDB is unreachable after ' + attempts + ' attempts.');
+  console.error('[Fatal] Refusing to start with mock/hardcoded data. Start MongoDB or fix MONGO_URI.');
+  process.exit(1);
 };
 
-export const isUsingMock = () => isMock;
+export const isUsingMock = () => process.env.MOCK_DB === 'true';

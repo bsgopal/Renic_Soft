@@ -15,8 +15,8 @@ const clientSchema = new mongoose.Schema({
   licenseEnd: { type: Date, required: true },
   planTier: {
     type: String,
-    enum: ['basic', 'pro', 'enterprise'],
-    default: 'basic'
+    trim: true,
+    default: 'pro'
   },
   maxFloors: { type: Number, default: 1 },
   maxUsers: { type: Number, default: 3 },
@@ -38,9 +38,16 @@ const clientSchema = new mongoose.Schema({
     trim: true,
     default: 'WA_INSTA_AUTOMATION'
   },
+  solutionMode: { type: String, default: '', trim: true },
+  solutionModes: { type: [String], default: [] },
+  businessType: { type: String, default: '', trim: true },
+  customTerminology: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
 
   // SaaS Dual-Slug & Routing
-  customerCode: { type: String, sparse: true, uppercase: true, trim: true, index: true },
+  customerCode: { type: String, sparse: true, lowercase: true, trim: true, index: true },
   shopSlug: { type: String, lowercase: true, trim: true, default: '' },
   fullSaaSDomain: { type: String, default: '' },
   databaseName: { type: String, default: '' }, // e.g. renic_tenant_saraswat-tx or renic_trial_sandbox
@@ -70,7 +77,7 @@ const clientSchema = new mongoose.Schema({
   whatsappSenderMode: {
     type: String,
     enum: ['META', 'DOCKER'],
-    default: 'META'
+    default: 'DOCKER'
   },
   dockerThrottleSeconds: {
     type: Number,
@@ -103,10 +110,10 @@ const clientSchema = new mongoose.Schema({
     }]
   },
 
-  // Billing Cycle & Multi-Duration (1, 3, 6 Months, 1 Year)
+  // Billing Cycle & Multi-Duration (1, 3, 6 Months, 1 Year, Lifetime)
   billingCycle: {
     type: String,
-    enum: ['1_MONTH', '3_MONTHS', '6_MONTHS', '1_YEAR'],
+    enum: ['1_MONTH', '3_MONTHS', '6_MONTHS', '1_YEAR', 'LIFETIME'],
     default: '1_MONTH'
   },
 
@@ -137,6 +144,13 @@ const clientSchema = new mongoose.Schema({
     }
   },
 
+  // Per-Field Visibility & Required Control (per screen, per field)
+  // Structure: { <screenKey>: { <fieldKey>: { visible: bool, required: bool } } }
+  fieldConfig: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+
   // Dynamic Port Forwarding & PaaS Fleet Management
   portForwarding: {
     targetIp: { type: String, default: '127.0.0.1' },
@@ -162,7 +176,14 @@ const clientSchema = new mongoose.Schema({
     }]
   },
 
-  // Legacy Feature Entitlement Matrix
+  // Multi-Branch Topology & Hierarchy Governance (Master Level)
+  branchConfig: {
+    mode: { type: String, enum: ['SINGLE', 'MULTI'], default: 'SINGLE' },
+    maxBranches: { type: Number, default: 1 },
+    allowInterBranchTransfer: { type: Boolean, default: false }
+  },
+
+  // Legacy & Pawn Broking Feature Entitlement Matrix
   featurePermissions: {
     quickReplies: { type: Boolean, default: true },
     workflows: { type: Boolean, default: true },
@@ -172,7 +193,12 @@ const clientSchema = new mongoose.Schema({
     bulkBroadcast: { type: Boolean, default: true },
     aiAgent: { type: Boolean, default: false },
     metaCloudApi: { type: Boolean, default: true },
-    exportReports: { type: Boolean, default: true }
+    exportReports: { type: Boolean, default: true },
+    // Enterprise Pawn Broking Master Entitlements
+    allowPartialRelease: { type: Boolean, default: false },
+    allowRePledge: { type: Boolean, default: false },
+    enableBlacklistShield: { type: Boolean, default: true },
+    allowCustomPrintTemplates: { type: Boolean, default: true }
   },
 
   // Usage Quotas & Limits

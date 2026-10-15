@@ -68,10 +68,10 @@ router.post('/', protect, async (req, res) => {
     const quoteNumber = await nextNumber('RN-QT-');
     const totals = computeTotals(items);
     // Store is optional: quotations can be created for new / walk-in customers too
-    const clientId = req.user.role === 'platform_owner' ? (req.body.clientId || null) : req.user.clientId;
+    let clientId = req.user.role === 'platform_owner' ? (req.body.clientId || null) : (req.user.clientId || null);
+    if (!clientId || clientId === '') clientId = null;
 
-    const quote = await dbHelper.create('Quotation', {
-      clientId,
+    const quoteData = {
       quoteNumber,
       customerName: customerName || '',
       customerPhone: customerPhone || '',
@@ -86,7 +86,10 @@ router.post('/', protect, async (req, res) => {
       terms: terms || '',
       advanceDeposit: Number(advanceDeposit) || 0,
       status: status || 'draft'
-    });
+    };
+    if (clientId) quoteData.clientId = clientId;
+
+    const quote = await dbHelper.create('Quotation', quoteData);
     res.status(201).json({ success: true, message: 'Quotation created successfully', quotation: quote });
   } catch (error) {
     console.error('Create quotation error:', error);

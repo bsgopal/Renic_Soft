@@ -13,7 +13,7 @@ async function seed() {
   if (rj) {
     rj.customerCode = 'AU20';
     rj.shopSlug = 'royaljewelers';
-    rj.fullSaaSDomain = 'https://au20-royaljewelers.renic.store';
+    rj.fullSaaSDomain = 'https://wa.au20.renictech.com';
     rj.softwareProduct = 'WA_INSTA_AUTOMATION';
     rj.portForwarding = {
       targetIp: '127.0.0.1',
@@ -53,7 +53,7 @@ async function seed() {
       name: 'Chennai Silks & Textiles',
       customerCode: 'TX10',
       shopSlug: 'chennaisilks',
-      fullSaaSDomain: 'https://tx10-chennaisilks.renic.store',
+      fullSaaSDomain: 'https://pos.tx10.renictech.com',
       softwareProduct: 'TEXTILE_POS',
       licenseKey: 'TX10-CHENNAI-TEXTILES-ENTERPRISE-2026',
       licenseStatus: 'active',
@@ -103,7 +103,7 @@ async function seed() {
       name: 'Renic Garments Logistics & Dispatch',
       customerCode: 'DC10',
       shopSlug: 'renicdispatch',
-      fullSaaSDomain: 'https://dc10-dispatch.renic.store',
+      fullSaaSDomain: 'https://challan.dc10.renictech.com',
       softwareProduct: 'DELIVERY_CHALLAN',
       licenseKey: 'DC10-RENIC-DISPATCH-ENTERPRISE-2026',
       licenseStatus: 'active',

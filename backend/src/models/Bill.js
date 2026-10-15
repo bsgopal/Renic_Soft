@@ -13,7 +13,7 @@ const billItemSchema = new mongoose.Schema({
 });
 
 const billSchema = new mongoose.Schema({
-  clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
+  clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: false },
   invoiceNumber: { type: String, required: true },
   quoteId: { type: mongoose.Schema.Types.ObjectId, ref: 'Quotation' },
   cashierId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

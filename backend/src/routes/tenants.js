@@ -1,6 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import Client from '../models/Client.js';
+import { buildCustomerUrlForProduct } from '../utils/customerUrl.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'RenicSoft_Secret_Key_2026_Enterprise';
@@ -114,10 +115,10 @@ router.get('/:customerCode/:shopSlug?', async (req, res) => {
     const daysRemaining = Math.max(0, Math.ceil((new Date(client.licenseEnd) - now) / (1000 * 60 * 60 * 24)));
     const isExpired = daysRemaining <= 0;
 
-    // Generate SaaS URL
+    // Generate SaaS URL — canonical {appSlug}.{customerCode}.{domain}
     const slug = client.shopSlug || client.name.toLowerCase().replace(/[^a-z0-9]/g, '');
     const code = (client.customerCode || 'CLIENT').toLowerCase();
-    const cleanDomain = client.fullSaaSDomain || `https://${code}-${slug}.renic.store`;
+    const cleanDomain = buildCustomerUrlForProduct(client);
 
     // 100% IP & PORT SECRECY: Stripping all target IPs and internal ports
     res.json({
@@ -172,27 +173,13 @@ router.post('/heartbeat', async (req, res) => {
       callerIp = callerIp.replace('::ffff:', '');
     }
 
-    const currentTargetIp = client.portForwarding?.targetIp || '127.0.0.1';
+    // The heartbeat used to phone home its public IP and, when `autoRelinkEnabled`
+    // was set, overwrite `portForwarding.targetIp` with it — meaning the
+    // customer's record silently learned a new address from whoever called. It
+    // also wrote `assignedPort` from a caller-supplied `localPort`. Routing is
+    // by Host header now (config/appPorts.js), so neither the caller's IP nor
+    // its port is accepted any more: this endpoint only records liveness.
     const now = new Date();
-
-    let ipChanged = false;
-    // If incoming IP changed and autoRelink is enabled, record history and update
-    if (callerIp && callerIp !== '127.0.0.1' && callerIp !== currentTargetIp && client.portForwarding?.autoRelinkEnabled) {
-      ipChanged = true;
-      client.portForwarding.ipChangeHistory = client.portForwarding.ipChangeHistory || [];
-      client.portForwarding.ipChangeHistory.push({
-        previousIp: currentTargetIp,
-        newIp: callerIp,
-        changedAt: now,
-        changedBy: 'Phone-Home Heartbeat Sensor',
-        reason: 'Auto-detected broadband dynamic IP change'
-      });
-      client.portForwarding.targetIp = callerIp;
-    }
-
-    if (localPort && (!client.portForwarding.assignedPort || client.portForwarding.assignedPort === 5000)) {
-      client.portForwarding.assignedPort = localPort;
-    }
 
     client.portForwarding.status = 'online';
     client.portForwarding.lastHeartbeatAt = now;

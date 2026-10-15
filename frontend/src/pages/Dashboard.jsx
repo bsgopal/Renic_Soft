@@ -20,88 +20,112 @@ export default function Dashboard() {
   }, []);
 
   const cards = [
-    { label: 'Total Licenses', value: data?.totalClients ?? '—', icon: 'store', color: 'bg-brand-50 text-brand-500', to: '/licenses' },
+    { label: 'Total Licenses', value: data?.totalClients ?? '—', icon: 'store', color: 'bg-lime-50 text-blue-600', to: '/licenses' },
     { label: 'Active Plans', value: data?.activeClients ?? '—', icon: 'check', color: 'bg-emerald-50 text-emerald-600', to: '/licenses' },
     { label: 'Quotations', value: data?.totalQuotes ?? '—', icon: 'quote', color: 'bg-violet-50 text-violet-600', to: '/quotes' },
     { label: 'Invoices', value: data?.totalBills ?? '—', icon: 'bill', color: 'bg-amber-50 text-amber-600', to: '/billing' },
     { label: 'Collected Revenue', value: data ? money(data.revenue) : '—', icon: 'bill', color: 'bg-emerald-50 text-emerald-600', to: '/billing' },
-    { label: 'Outstanding', value: data ? money(data.pendingRevenue) : '—', icon: 'clock', color: 'bg-red-50 text-red-600', to: '/billing' }
+    { label: 'Outstanding', value: data ? money(data.pendingRevenue) : '—', icon: 'clock', color: 'bg-rose-50 text-rose-600', to: '/billing' }
   ];
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="w-full space-y-6">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-ink">
-            Welcome back, {user?.name?.split(' ')[0]}
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            Welcome back, {user?.name?.split(' ')[0] || 'Admin'}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">Here's what's happening across your Renic Soft platform.</p>
+          <p className="text-xs text-slate-500 mt-0.5">Real-time overview of customer instances, revenue, and active platform services.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/licenses"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] text-xs font-bold rounded-xl shadow-xs transition"
+          >
+            <Icon name="plus" className="w-3.5 h-3.5" /> Launch Instance
+          </Link>
+          <Link
+            to="/quotes"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
+          >
+            <Icon name="quote" className="w-3.5 h-3.5" /> New Quote
+          </Link>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-center py-20 text-gray-400">Loading dashboard...</div>
+        <div className="text-center py-20 text-slate-400">
+          <Icon name="refresh" className="w-6 h-6 animate-spin mx-auto text-[#65a30d] mb-2" />
+          <p className="text-xs font-medium">Loading platform metrics...</p>
+        </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {/* Top Metric Cards (Spans Full Width) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {cards.map((c) => (
-              <Link key={c.label} to={c.to} className="card p-5 flex items-center gap-4 hover:shadow-cardhover transition-shadow">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${c.color}`}>
-                  <Icon name={c.icon} className="w-6 h-6" />
+              <Link key={c.label} to={c.to} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-[#84cc16] hover:shadow-sm transition group">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{c.label}</span>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${c.color} group-hover:scale-105 transition`}>
+                    <Icon name={c.icon} className="w-4 h-4" />
+                  </div>
                 </div>
-                <div>
-                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{c.label}</div>
-                  <div className="text-xl font-semibold text-ink">{c.value}</div>
-                </div>
+                <div className="text-lg font-bold text-slate-900 tracking-tight">{c.value}</div>
               </Link>
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-6 mt-8">
+          {/* Bottom Split Activity Tables */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Recent quotations */}
-            <div className="card overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h3 className="font-semibold text-ink">Recent Quotations</h3>
-                <Link to="/quotes" className="text-sm text-brand-600 font-medium hover:underline">View all</Link>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/70">
+                <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <Icon name="quote" className="w-3.5 h-3.5 text-violet-600" /> Recent Quotations
+                </h3>
+                <Link to="/quotes" className="text-xs text-[#65a30d] font-bold hover:underline">View all →</Link>
               </div>
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-slate-100 text-xs">
                 {data?.recentQuotes?.length ? data.recentQuotes.map((q) => (
-                  <Link key={q._id} to={`/quotes/${q._id}`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+                  <Link key={q._id} to={`/quotes`} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition">
                     <div>
-                      <div className="font-medium text-sm text-brand-600">{q.quoteNumber}</div>
-                      <div className="text-xs text-gray-500">{q.customerName || 'Walk-in'} · {new Date(q.quoteDate).toLocaleDateString()}</div>
+                      <div className="font-bold text-[#65a30d] text-xs">{q.quoteNumber}</div>
+                      <div className="text-[11px] text-slate-500">{q.customerName || 'Walk-in'} · {new Date(q.quoteDate).toLocaleDateString()}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold">{money(q.grandTotal)}</span>
+                      <span className="font-bold text-slate-900 font-mono">{money(q.grandTotal)}</span>
                       <Badge value={q.status} />
                     </div>
                   </Link>
                 )) : (
-                  <div className="px-5 py-8 text-center text-sm text-gray-400">No quotations yet. <Link to="/quotes" className="text-brand-600">Create one →</Link></div>
+                  <div className="px-4 py-8 text-center text-xs text-slate-400">No quotations yet. <Link to="/quotes" className="text-[#65a30d] font-bold">Create one →</Link></div>
                 )}
               </div>
             </div>
 
             {/* Recent invoices */}
-            <div className="card overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h3 className="font-semibold text-ink">Recent Invoices</h3>
-                <Link to="/billing" className="text-sm text-brand-600 font-medium hover:underline">View all</Link>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/70">
+                <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <Icon name="bill" className="w-3.5 h-3.5 text-emerald-600" /> Recent Invoices
+                </h3>
+                <Link to="/billing" className="text-xs text-[#65a30d] font-bold hover:underline">View all →</Link>
               </div>
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-slate-100 text-xs">
                 {data?.recentBills?.length ? data.recentBills.map((b) => (
-                  <Link key={b._id} to={`/billing/${b._id}`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+                  <Link key={b._id} to={`/billing`} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition">
                     <div>
-                      <div className="font-medium text-sm text-brand-600">{b.invoiceNumber}</div>
-                      <div className="text-xs text-gray-500">{b.customerName || 'Walk-in'} · {new Date(b.invoiceDate).toLocaleDateString()}</div>
+                      <div className="font-bold text-emerald-700 text-xs">{b.invoiceNumber}</div>
+                      <div className="text-[11px] text-slate-500">{b.customerName || 'Walk-in'} · {new Date(b.invoiceDate).toLocaleDateString()}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold">{money(b.grandTotal)}</span>
+                      <span className="font-bold text-slate-900 font-mono">{money(b.grandTotal)}</span>
                       <Badge value={b.status} />
                     </div>
                   </Link>
                 )) : (
-                  <div className="px-5 py-8 text-center text-sm text-gray-400">No invoices yet. <Link to="/billing" className="text-brand-600">Create one →</Link></div>
+                  <div className="px-4 py-8 text-center text-xs text-slate-400">No invoices yet. <Link to="/billing" className="text-[#65a30d] font-bold">Create one →</Link></div>
                 )}
               </div>
             </div>

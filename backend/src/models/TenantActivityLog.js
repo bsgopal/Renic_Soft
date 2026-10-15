@@ -5,11 +5,15 @@ const tenantActivityLogSchema = new mongoose.Schema({
   customerCode: {
     type: String,
     required: true,
-    uppercase: true,
+    lowercase: true,
     trim: true,
     index: true
   },
   clientId: {
+    type: String,
+    default: ''
+  },
+  clientName: {
     type: String,
     default: ''
   },

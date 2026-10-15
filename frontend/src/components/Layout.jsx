@@ -1,26 +1,25 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Icon } from './icons.jsx';
 import api from '../api.js';
 import logo from '../assets/logo.png';
 
-const NavItem = ({ to, icon, label, end }) => (
-  <NavLink
-    to={to}
-    end={end}
-    className={({ isActive }) =>
-      `flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-150 ${
-        isActive
-          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 font-semibold'
-          : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
-      }`
-    }
-  >
-    <Icon name={icon} className="w-5 h-5" />
-    {label}
-  </NavLink>
-);
+const NAV_MODULES = [
+  { to: '/', icon: 'dashboard', label: 'Dashboard', short: 'Dash', end: true },
+  { to: '/licenses', icon: 'license', label: 'Licenses & Fleet', short: 'Licenses' },
+  { to: '/plan-tiers', icon: 'license', label: 'Plan Tiers & Screens', short: 'Plans' },
+  { to: '/applications', icon: 'store', label: 'Applications (PaaS)', short: 'Apps' },
+  { to: '/deployments', icon: 'gitBranch', label: 'Deployments', short: 'Deploy' },
+  { to: '/credentials', icon: 'key', label: 'API & OAuth Hub', short: 'API Hub' },
+  { to: '/activity-report', icon: 'eye', label: 'Screen Audit', short: 'Audit' },
+  { to: '/network', icon: 'network', label: 'Customer URLs', short: 'Network' },
+  { to: '/quotes', icon: 'quote', label: 'Quotations', short: 'Quotes' },
+  { to: '/billing', icon: 'bill', label: 'Billing', short: 'Billing' },
+  { to: '/reports', icon: 'bill', label: 'Payment Reports', short: 'Reports' },
+  { to: '/notifications', icon: 'bell', label: 'Notifications', short: 'Notifs' },
+  { to: '/settings', icon: 'store', label: 'Company Settings', short: 'Settings' }
+];
 
 const severityDot = {
   critical: 'bg-rose-600 animate-pulse',
@@ -32,7 +31,10 @@ const severityDot = {
 export default function Layout({ children }) {
   const { user = null, logout = () => {} } = useAuth() || {};
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+
+  // Left sidebar starts expanded by default
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [notifs, setNotifs] = useState({ notifications: [], unreadCount: 0 });
   const [notifOpen, setNotifOpen] = useState(false);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
@@ -81,8 +83,18 @@ export default function Layout({ children }) {
 
   useEffect(() => {
     loadNotifications();
-    const t = setInterval(loadNotifications, 60000); // refresh every minute
-    return () => clearInterval(t);
+    const t = setInterval(loadNotifications, 8000);
+    const onFocus = () => loadNotifications();
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('storage', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+
+    return () => {
+      clearInterval(t);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('storage', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
   }, [loadNotifications]);
 
   useEffect(() => {
@@ -101,199 +113,202 @@ export default function Layout({ children }) {
   const initials = (user?.name || 'U').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const unread = notifs.unreadCount || 0;
 
+  // Check if current page is full-height 2-column workspace
+  const isFullHeightPage = ['/licenses', '/quotes', '/billing', '/applications', '/network', '/credentials'].some(
+    p => location.pathname.startsWith(p)
+  );
+
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Top bar */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="flex items-center justify-between px-4 md:px-6 h-16">
-          <div className="flex items-center gap-3">
-            <button
-              className="lg:hidden p-2 rounded-full hover:bg-gray-100"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              <Icon name="menu" className="w-6 h-6" />
-            </button>
-            <div className="flex items-center gap-2.5">
-              <img src={logo} alt="Renic Soft" className="w-9 h-9 rounded-xl object-contain bg-white ring-1 ring-gray-100" />
-              <div>
-                <div className="font-semibold text-ink leading-tight">Renic Soft</div>
-                <div className="text-xs text-gray-500 -mt-0.5">License · Quotation · Billing</div>
-              </div>
+    <div className="h-screen max-h-screen flex flex-col bg-[#f4f6f8] text-slate-800 antialiased overflow-hidden">
+      {/* ── 1. MAIN TOP HEADER (UNIFIED OBSIDIAN BLACK THEME) ── */}
+      <header className="bg-[#0f172a] border-b border-slate-800 text-white sticky top-0 z-40 h-13 flex-shrink-0 px-3 sm:px-4 flex items-center justify-between shadow-md">
+        {/* Left: Sidebar Toggle + Logo */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <button
+            onClick={() => setSidebarExpanded(!sidebarExpanded)}
+            className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition"
+            title={sidebarExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
+          >
+            <Icon name="menu" className="w-5 h-5" />
+          </button>
+
+          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/')}>
+            <div className="bg-white rounded-lg p-1 flex items-center justify-center shadow-xs">
+              <img src={logo} alt="Renic Soft" className="w-6 h-6 object-contain" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-extrabold text-white text-sm tracking-tight">Renic Soft</span>
+              <span className="text-[10px] bg-[#84cc16] text-[#0f172a] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">TECH</span>
+              <span className="text-[10px] bg-slate-800 text-slate-400 font-mono px-1.5 py-0.5 rounded font-bold border border-slate-700 hidden sm:inline-block">Master HQ</span>
             </div>
           </div>
+        </div>
 
-          <div className="flex items-center gap-3">
-            {/* Cloudflare Tunnel Status Pill */}
-            <div className="hidden sm:flex items-center gap-2 bg-emerald-50/90 border border-emerald-200/80 px-3 py-1.5 rounded-full text-xs shadow-sm">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="font-semibold text-emerald-900 tracking-tight">Tunnel: Active</span>
-              <span className="text-emerald-700 font-mono text-[11px] truncate max-w-[140px] hidden md:inline bg-emerald-100/60 px-1.5 py-0.5 rounded">
-                trycloudflare.com
-              </span>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText('https://today-anticipated-earning-centres.trycloudflare.com');
-                  setCopiedTunnel(true);
-                  setTimeout(() => setCopiedTunnel(false), 2000);
-                }}
-                className="text-emerald-700 hover:text-emerald-950 p-1 rounded-md hover:bg-emerald-200/60 transition-colors flex items-center gap-1"
-                title="Copy Cloudflare Tunnel Public Gateway URL"
-              >
-                <Icon name={copiedTunnel ? 'check' : 'copy'} className="w-3.5 h-3.5 text-emerald-700" />
-                {copiedTunnel && <span className="text-[10px] font-bold text-emerald-800">Copied!</span>}
-              </button>
-            </div>
+        {/* Right: Tunnel Status, Notifications, Profile */}
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          {/* Cloudflare Tunnel Status Pill */}
+          <div className="hidden sm:flex items-center gap-1.5 bg-slate-800/90 border border-slate-700 px-2.5 py-1 rounded-full text-[11px] text-slate-200">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="font-bold text-emerald-400">Platform Live</span>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText('https://renictech.com');
+                setCopiedTunnel(true);
+                setTimeout(() => setCopiedTunnel(false), 2000);
+              }}
+              className="text-slate-400 hover:text-white p-0.5 rounded transition flex items-center ml-0.5"
+              title="Copy Tunnel URL"
+            >
+              <Icon name={copiedTunnel ? 'check' : 'copy'} className="w-3 h-3 text-emerald-400" />
+            </button>
+          </div>
 
-            {/* Notifications bell */}
-            <div className="relative" ref={bellRef}>
-              <button
-                className="relative p-2.5 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
-                onClick={() => {
-                  const nextState = !notifOpen;
-                  setNotifOpen(nextState);
-                  if (nextState) {
-                    markAllAsRead();
-                  }
-                }}
-                title="Notifications"
-              >
-                <Icon name="bell" className="w-5 h-5" />
-                {unread > 0 && (
-                  <span className={`absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full text-white text-[10px] font-bold flex items-center justify-center ${(notifs.notifications || []).some(n => n.severity === 'critical') ? 'bg-rose-600 ring-2 ring-rose-300 animate-pulse' : 'bg-red-500'}`}>
-                    {unread > 9 ? '9+' : unread}
-                  </span>
-                )}
-              </button>
-
-              {notifOpen && (
-                <div className="absolute right-0 top-12 w-[380px] max-w-[90vw] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
-                  <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100 bg-slate-50/70">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-ink text-sm">Notifications</h4>
-                      {(notifs.notifications || []).some(n => n.severity === 'critical') && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 animate-pulse">
-                          CRITICAL ALERT
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        className="text-xs text-slate-500 hover:text-slate-800"
-                        onClick={markAllAsRead}
-                      >
-                        Clear badge
-                      </button>
-                      <button
-                        className="text-xs text-brand-600 font-medium hover:underline"
-                        onClick={() => { setNotifOpen(false); navigate('/notifications'); }}
-                      >
-                        View all
-                      </button>
-                    </div>
-                  </div>
-                  <div className="max-h-[380px] overflow-y-auto divide-y divide-gray-50">
-                    {loadingNotifs && notifs.notifications.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-sm text-gray-400">Loading...</div>
-                    ) : notifs.notifications.length === 0 ? (
-                      <div className="px-4 py-10 text-center">
-                        <div className="w-10 h-10 mx-auto rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mb-2">
-                          <Icon name="check" className="w-5 h-5" />
-                        </div>
-                        <p className="text-sm text-gray-500">You're all caught up!</p>
-                      </div>
-                    ) : (
-                      notifs.notifications.slice(0, 15).map((n, i) => (
-                        <button
-                          key={i}
-                          className={`w-full text-left px-4 py-3 hover:bg-gray-50 flex items-start gap-3 transition-colors ${n.severity === 'critical' ? 'bg-rose-50/50 hover:bg-rose-50 border-l-4 border-l-rose-600' : ''}`}
-                          onClick={() => { setNotifOpen(false); if (n.link) navigate(n.link); }}
-                        >
-                          <span className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${severityDot[n.severity] || 'bg-sky-500'}`} />
-                          <span className="min-w-0 flex-1">
-                            <span className={`block text-xs font-semibold leading-snug ${n.severity === 'critical' ? 'text-rose-900 font-bold' : 'text-ink'}`}>{n.title}</span>
-                            <span className="block text-xs text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">{n.message}</span>
-                            {n.timestamp && (
-                              <span className="block text-[10px] text-gray-400 mt-1">
-                                {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {new Date(n.timestamp).toLocaleDateString()}
-                              </span>
-                            )}
-                          </span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
+          {/* Notifications Bell */}
+          <div className="relative" ref={bellRef}>
+            <button
+              className="relative p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition"
+              onClick={() => {
+                const next = !notifOpen;
+                setNotifOpen(next);
+                if (next) markAllAsRead();
+              }}
+              title="Notifications"
+            >
+              <Icon name="bell" className="w-5 h-5" />
+              {unread > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center">
+                  {unread > 9 ? '9+' : unread}
+                </span>
               )}
-            </div>
+            </button>
 
-            <div className="flex items-center gap-2.5 pl-2 border-l border-gray-200">
-              <div className="w-9 h-9 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-sm font-semibold">
-                {initials}
+            {notifOpen && (
+              <div className="absolute right-0 top-10 w-[360px] max-w-[90vw] bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50 text-slate-800">
+                <div className="px-3.5 py-2.5 flex items-center justify-between border-b border-slate-100 bg-slate-50">
+                  <h4 className="font-bold text-slate-900 text-xs">Notifications</h4>
+                  <button className="text-[11px] text-[#65a30d] font-semibold hover:underline" onClick={() => { setNotifOpen(false); navigate('/notifications'); }}>
+                    View all
+                  </button>
+                </div>
+                <div className="max-h-[320px] overflow-y-auto divide-y divide-slate-100">
+                  {notifs.notifications.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-400">No new alerts</div>
+                  ) : (
+                    notifs.notifications.slice(0, 10).map((n, i) => (
+                      <button
+                        key={i}
+                        className="w-full text-left p-3 hover:bg-slate-50 flex items-start gap-2.5 transition text-xs"
+                        onClick={() => { setNotifOpen(false); if (n.link) navigate(n.link); }}
+                      >
+                        <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${severityDot[n.severity] || 'bg-sky-500'}`} />
+                        <div className="min-w-0 flex-1">
+                          <span className="block font-bold text-slate-900 text-xs">{n.title}</span>
+                          <span className="block text-slate-500 text-[11px] truncate mt-0.5">{n.message}</span>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
-              <div className="hidden sm:block">
-                <div className="text-sm font-medium leading-tight">{user?.name}</div>
-                <div className="text-xs text-gray-500 capitalize">{user?.role?.replace('_', ' ')}</div>
-              </div>
-              <button onClick={handleLogout} className="p-2.5 rounded-full hover:bg-gray-100 text-gray-600" title="Logout">
-                <Icon name="logout" className="w-5 h-5" />
-              </button>
+            )}
+          </div>
+
+          {/* Profile Avatar */}
+          <div className="flex items-center gap-2 pl-2 border-l border-slate-700">
+            <div className="w-7 h-7 rounded-full bg-slate-800 text-[#84cc16] ring-1 ring-slate-700 flex items-center justify-center text-xs font-bold font-mono">
+              {initials}
             </div>
+            <button onClick={handleLogout} className="p-1 text-slate-400 hover:text-rose-400 rounded transition" title="Logout">
+              <Icon name="logout" className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </header>
 
-      <div className="flex flex-1">
-        {/* Sidebar */}
+      {/* ── 2. SUB-HEADER MODULE SCREEN TABS (OBSIDIAN DARK BACKGROUND) ── */}
+      <div className="bg-[#1e293b] border-b border-slate-800 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-shrink-0 z-30">
+        <div className="flex items-center gap-1.5 min-w-max">
+          {NAV_MODULES.map((m) => (
+            <NavLink
+              key={m.to}
+              to={m.to}
+              end={m.end}
+              className={({ isActive }) =>
+                `flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition whitespace-nowrap ${
+                  isActive
+                    ? 'bg-[#84cc16] text-[#0f172a] shadow-xs'
+                    : 'bg-slate-800/80 text-slate-300 border border-slate-700/80 hover:bg-slate-700 hover:text-white'
+                }`
+              }
+            >
+              <Icon name={m.icon} className="w-3.5 h-3.5" />
+              <span>{m.short}</span>
+            </NavLink>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 3. BODY CONTAINER: LEFT COLLAPSIBLE SIDEBAR + MAIN WORKSPACE ── */}
+      <div className="flex flex-1 overflow-hidden">
+        
+        {/* LEFT SIDEBAR (Obsidian Theme, Default: Expanded, Hover Tooltips on Collapse) */}
         <aside
-          className={`fixed lg:sticky top-16 h-[calc(100vh-4rem)] w-64 bg-white border-r border-gray-200 p-4 flex flex-col gap-1 z-40 transition-transform lg:translate-x-0 ${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          className={`bg-[#0f172a] border-r border-slate-800 flex flex-col flex-shrink-0 transition-all duration-200 z-30 ${
+            sidebarExpanded ? 'w-56' : 'w-14'
           }`}
         >
-          <div className="px-2 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Main Menu</div>
-          <NavItem to="/" icon="dashboard" label="Dashboard" end />
-          <NavItem to="/licenses" icon="license" label="Licenses & Fleet" />
-          <NavItem to="/applications" icon="store" label="Applications (PaaS Hub)" />
-          <NavItem to="/deployments" icon="gitBranch" label="Git Deployments" />
-          <NavItem to="/credentials" icon="key" label="API & OAuth Hub" />
-          <NavItem to="/activity-report" icon="eye" label="Customer Screen Audit" />
-          <NavItem to="/network" icon="network" label="Port Forwarding & Router" />
-          <NavItem to="/quotes" icon="quote" label="Quotations" />
-          <NavItem to="/billing" icon="bill" label="Billing" />
-          <NavItem to="/reports" icon="bill" label="Payment Reports" />
+          <div className="flex-1 py-2 px-1.5 space-y-1 overflow-y-auto">
+            {NAV_MODULES.map((m) => (
+              <NavLink
+                key={m.to}
+                to={m.to}
+                end={m.end}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold transition group relative ${
+                    isActive
+                      ? 'bg-[#84cc16] text-[#0f172a] shadow-xs'
+                      : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
+                  }`
+                }
+                title={m.label}
+              >
+                <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+                  <Icon name={m.icon} className="w-4 h-4" />
+                </div>
+                {sidebarExpanded && (
+                  <span className="truncate">{m.label}</span>
+                )}
+                {!sidebarExpanded && (
+                  <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#020617] text-white text-xs font-bold rounded-lg shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-150 z-50 whitespace-nowrap border border-slate-700 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#84cc16]" />
+                    <span>{m.label}</span>
+                    <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-[#020617]" />
+                  </div>
+                )}
+              </NavLink>
+            ))}
+          </div>
 
-          <div className="px-2 pt-2 mt-2 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-100">System</div>
-          <NavItem to="/notifications" icon="bell" label="Notifications" />
-          <NavItem to="/settings" icon="store" label="Company Settings" />
-
-          <div className="flex-1" />
-
-          {unread > 0 && (
+          {/* Bottom Sidebar Collapse / Expand Button */}
+          <div className="p-2 border-t border-slate-800">
             <button
-              className="mb-3 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 text-left hover:bg-amber-100 transition-colors"
-              onClick={() => navigate('/notifications')}
+              onClick={() => setSidebarExpanded(!sidebarExpanded)}
+              className="w-full flex items-center justify-center gap-2 p-2 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white text-xs font-bold transition"
+              title={sidebarExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
             >
-              <div className="text-sm font-semibold text-amber-700 flex items-center gap-1.5">
-                <Icon name="bell" className="w-4 h-4" /> {unread} action{unread > 1 ? 's' : ''} needed
-              </div>
-              <div className="text-xs text-amber-600 mt-0.5">Expiring licenses & pending payments</div>
+              <Icon name="expand" className={`w-4 h-4 transition-transform ${sidebarExpanded ? 'rotate-180' : ''}`} />
+              {sidebarExpanded && <span>Collapse</span>}
             </button>
-          )}
-
-          <div className="rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 p-4 text-white">
-            <div className="font-medium text-sm mb-1">Renic Soft Platform</div>
-            <p className="text-xs opacity-80 leading-relaxed">Manage licenses, quotations & invoices from one place.</p>
           </div>
         </aside>
 
-        {/* Backdrop for mobile */}
-        {sidebarOpen && (
-          <div className="fixed inset-0 bg-black/30 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-        )}
-
-        <main className="flex-1 p-4 md:p-8 min-w-0">{children}</main>
+        {/* MAIN WORKSPACE (Takes 100% Remaining Screen Real Estate) */}
+        <main className={`flex-1 min-w-0 overflow-hidden flex flex-col ${isFullHeightPage ? 'p-0' : 'overflow-y-auto p-4 sm:p-6'}`}>
+          {children}
+        </main>
       </div>
     </div>
   );

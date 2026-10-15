@@ -2,7 +2,9 @@ import express from 'express';
 import axios from 'axios';
 import crypto from 'crypto';
 import os from 'os';
+import { buildCustomerUrlForProduct } from '../utils/customerUrl.js';
 import Client from '../models/Client.js';
+import { appPortFor } from '../config/appPorts.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -22,8 +24,8 @@ router.get('/mappings', authorize('admin', 'platform_owner'), async (req, res) =
     const mappings = clients.map(client => {
       const code = client.customerCode || client.subdomain?.toUpperCase() || client.name.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'RENIC';
       const slug = client.shopSlug || client.subdomain || code.toLowerCase();
-      // SaaS Production URL: https://<clientId>.cloud.renicsoft.com
-      const saasUrl = client.fullSaaSDomain || `https://${code.toLowerCase()}.cloud.renicsoft.com`;
+      // SaaS Production URL: https://<appSlug>.<customerCode>.renictech.com
+      const saasUrl = buildCustomerUrlForProduct(client) || client.fullSaaSDomain;
 
       return {
         _id: client._id,
@@ -70,7 +72,7 @@ router.get('/mappings', authorize('admin', 'platform_owner'), async (req, res) =
  */
 router.put('/relink/:clientId', authorize('admin', 'platform_owner'), async (req, res) => {
   try {
-    const { targetIp, assignedPort, reason, connectionType, name, customerCode, saasUrl, fullSaaSDomain } = req.body;
+    const { name, customerCode, saasUrl, fullSaaSDomain } = req.body;
     const client = await Client.findById(req.params.clientId);
 
     if (!client) {
@@ -102,42 +104,27 @@ router.put('/relink/:clientId', authorize('admin', 'platform_owner'), async (req
     }
 
     client.portForwarding = client.portForwarding || {};
-    const previousIp = client.portForwarding.targetIp || '127.0.0.1';
-    const newIp = (targetIp || previousIp).trim();
 
-    // Audit log to ipChangeHistory
-    client.portForwarding.ipChangeHistory = client.portForwarding.ipChangeHistory || [];
-    client.portForwarding.ipChangeHistory.push({
-      previousIp,
-      newIp,
-      changedAt: new Date(),
-      changedBy: req.user?.name || 'Platform Owner',
-      reason: reason || 'Dynamic IP Relink / Cloud Network Configuration'
-    });
-
-    client.portForwarding.targetIp = newIp;
-    if (assignedPort) {
-      client.portForwarding.assignedPort = Number(assignedPort);
-      client.assignedPort = Number(assignedPort);
-    }
-    if (connectionType) {
-      client.portForwarding.connectionType = connectionType;
-    }
-
-    // Trigger immediate ping verification to the new IP
+    // targetIp / assignedPort / connectionType are deliberately no longer
+    // accepted here. A customer does not own an IP or a port: the Host header
+    // identifies them and their product's shared process answers (see
+    // config/appPorts.js). This route still renames a customer, rotates their
+    // code, and sets their public URL — what the Network Manager's non-network
+    // controls need — but it no longer writes or pings a customer-specific
+    // address. Verification targets the product's own process instead.
     let pingLatency = 0;
     let pingStatus = 'unknown';
-    const port = client.portForwarding.assignedPort || 5000;
+    const port = appPortFor(client.softwareProduct);
     const startTime = Date.now();
 
     try {
-      await axios.get(`http://${newIp}:${port}/health`, { timeout: 2500 });
+      await axios.get(`http://127.0.0.1:${port}/health`, { timeout: 2500 });
       pingLatency = Date.now() - startTime;
       pingStatus = 'online';
     } catch (err) {
       // Try /api/health fallback
       try {
-        await axios.get(`http://${newIp}:${port}/api/health`, { timeout: 1500 });
+        await axios.get(`http://127.0.0.1:${port}/api/health`, { timeout: 1500 });
         pingLatency = Date.now() - startTime;
         pingStatus = 'online';
       } catch (fallbackErr) {
@@ -153,7 +140,7 @@ router.put('/relink/:clientId', authorize('admin', 'platform_owner'), async (req
 
     res.json({
       success: true,
-      message: `Relinked successfully to ${newIp}:${port}. Status: ${pingStatus} (${pingLatency}ms)`,
+      message: `${client.name} verified on port ${port}. Status: ${pingStatus} (${pingLatency}ms)`,
       portForwarding: client.portForwarding
     });
   } catch (error) {
@@ -196,7 +183,9 @@ router.post('/rotate-slug/:clientId', authorize('admin', 'platform_owner'), asyn
 
     client.shopSlug = newSlug;
     const code = (client.customerCode || 'CLIENT').toLowerCase();
-    client.fullSaaSDomain = `https://${code}-${newSlug}.renic.store`;
+    // Canonical shape, using the freshly-rotated slug as the host label so the
+    // customer's previous URL genuinely stops resolving after a rotation.
+    client.fullSaaSDomain = buildCustomerUrlForProduct({ customerCode: newSlug, softwareProduct: client.softwareProduct });
 
     await client.save();
 
@@ -259,8 +248,11 @@ router.post('/ping/:clientId', authorize('admin', 'platform_owner'), async (req,
       return res.status(404).json({ success: false, message: 'Client not found' });
     }
 
-    const targetIp = client.portForwarding?.targetIp || '127.0.0.1';
-    const port = client.portForwarding?.assignedPort || client.assignedPort || 5000;
+    // Ping the customer's PRODUCT process. The old code dialled
+    // `portForwarding.targetIp:assignedPort`, a per-customer address that a
+    // heartbeat could rewrite to whatever IP called it last.
+    const targetIp = '127.0.0.1';
+    const port = appPortFor(client.softwareProduct);
     const startTime = Date.now();
 
     let isOnline = false;
@@ -357,12 +349,16 @@ router.post('/ping-url', authorize('admin', 'platform_owner'), async (req, res) 
     if (clientId) {
       client = await Client.findById(clientId);
       if (!targetUrl && client) {
-        targetUrl = `http://localhost:5050/gateway/${client.customerCode}`;
+        // Ping the product's process itself. `/gateway/:code` now 302s to the
+        // customer's canonical hostname, which does not resolve from the
+        // server during development — following that redirect would report
+        // every customer as offline.
+        targetUrl = `http://localhost:${appPortFor(client.softwareProduct)}/`;
       }
     }
 
     if (!targetUrl) {
-      targetUrl = 'http://localhost:5050/gateway/RENIC';
+      targetUrl = `http://localhost:${appPortFor('TEXTILE_POS')}/`;
     }
 
     // Ping the URL with live timing
@@ -391,8 +387,8 @@ router.post('/ping-url', authorize('admin', 'platform_owner'), async (req, res) 
     let nodeLatency = 0;
     let nodeEndpoint = '';
 
-    if (client && client.portForwarding?.targetIp && client.portForwarding?.assignedPort) {
-      nodeEndpoint = `${client.portForwarding.targetIp}:${client.portForwarding.assignedPort}`;
+    if (client) {
+      nodeEndpoint = `127.0.0.1:${appPortFor(client.softwareProduct)}`;
       const tNode = Date.now();
       try {
         const nodeRes = await axios.get(`http://${nodeEndpoint}/`, {

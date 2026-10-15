@@ -2,6 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import axios from 'axios';
 import { dbHelper } from '../models/dbHelper.js';
+import { buildCustomerBaseUrl } from '../utils/customerUrl.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -41,6 +42,7 @@ router.post('/push/:clientId', protect, authorize('platform_owner'), async (req,
     const payload = {
       clientId: String(client._id),
       clientName: client.name,
+      customerCode: client.customerCode || client.subdomain,
       subdomain: client.subdomain || '',
       softwareProduct: client.softwareProduct || 'WA_INSTA_AUTOMATION',
       planTier: client.planTier || 'basic',
@@ -48,17 +50,14 @@ router.post('/push/:clientId', protect, authorize('platform_owner'), async (req,
       licenseStart: client.licenseStart,
       licenseEnd: client.licenseEnd,
       licenseStatus: client.licenseStatus || 'active',
-      featurePermissions: client.featurePermissions || {
-        quickReplies: true,
-        workflows: true,
-        catalog: true,
-        templates: true,
-        responseRules: true,
-        bulkBroadcast: true,
-        aiAgent: false,
-        metaCloudApi: true,
-        exportReports: true
-      },
+      emergencyLock: Boolean(
+        client.securitySettings?.emergencyLock ||
+        ['locked', 'disabled', 'suspended', 'cancelled', 'inactive', 'revoked'].includes(client.licenseStatus)
+      ),
+      screenPermissions: client.screenPermissions || client.featurePermissions || {},
+      featurePermissions: client.screenPermissions || client.featurePermissions || {},
+      whatsappSenderMode: client.whatsappSenderMode || 'DOCKER',
+      dockerThrottleSeconds: client.dockerThrottleSeconds || 6,
       limits: client.limits || {
         maxContacts: 10000,
         maxMonthlyMessages: 50000,
@@ -75,8 +74,8 @@ router.post('/push/:clientId', protect, authorize('platform_owner'), async (req,
     // Determine target URL for the client instance
     let targetUrl = client.clientInstanceUrl;
     if (!targetUrl) {
-      if (process.env.NODE_ENV === 'production' && client.subdomain) {
-        targetUrl = `https://${client.subdomain}.renic.store/api/v1/license/sync`;
+      if (process.env.NODE_ENV === 'production') {
+        targetUrl = `${buildCustomerBaseUrl(client)}/api/v1/license/sync`;
       } else {
         // Local development fallback to WA_INSTA_AUTOMATION port 5000
         targetUrl = 'http://127.0.0.1:5000/api/v1/license/sync';

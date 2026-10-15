@@ -8,8 +8,8 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: {
     type: String,
-    enum: ['platform_owner', 'admin', 'floor_manager', 'cashier', 'staff'],
-    default: 'staff'
+    enum: ['platform_owner', 'admin', 'client_admin', 'floor_manager', 'cashier', 'staff'],
+    default: 'admin'
   },
   permissions: {
     create_product: { type: Boolean, default: false },
@@ -18,6 +18,8 @@ const userSchema = new mongoose.Schema({
     approve_returns: { type: Boolean, default: false },
     access_suppliers: { type: Boolean, default: false }
   },
+  resetPasswordToken: { type: String },
+  resetPasswordExpire: { type: Date },
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 

@@ -18,9 +18,13 @@ import gatewayRoutes from './routes/gatewayProxy.js';
 import applicationRoutes from './routes/applications.js';
 import oauthRoutes from './routes/oauthRoutes.js';
 import activityRoutes from './routes/activityRoutes.js';
+import planTierRoutes from './routes/planTiers.js';
 
 import Client from './models/Client.js';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { connectDB } from './config/db.js';
+import { CUSTOMER_DOMAIN, hostBelongsToCustomerDomain } from './utils/customerUrl.js';
+import { appPortFor, backendPortFor } from './config/appPorts.js';
 import { proxyInstanceCache, clientTargetCache, invalidateProxyCache } from './utils/proxyCache.js';
 import { isClientSubscriptionExpired, handleExpiredSubscription, isClientDisabled, handleDisabledCustomer, renderDeletedCustomerPage } from './utils/subscriptionGuard.js';
 
@@ -30,13 +34,17 @@ const app = express();
 
 app.use(cors());
 
-// Dynamic Subdomain Proxy for *.renic.store, *.lvh.me, and *.sslip.io (Zero-Overhead Cached)
+// Dynamic Subdomain Proxy for *.renictech.com (canonical), plus legacy
+// *.renic.store / *.lvh.me / *.sslip.io fallbacks (Zero-Overhead Cached)
 app.use(async (req, res, next) => {
   const rawHost = req.headers.host || '';
   const host = rawHost.split(':')[0].toLowerCase();
   let sub = '';
 
-  if (host.endsWith('.renic.store')) {
+  // Canonical customer domain:  {appSlug}.{customerCode}.renictech.com
+  if (hostBelongsToCustomerDomain(host) && host !== CUSTOMER_DOMAIN) {
+    sub = host.slice(0, -(CUSTOMER_DOMAIN.length + 1));
+  } else if (host.endsWith('.renic.store')) {
     sub = host.replace('.renic.store', '');
   } else if (host.endsWith('.lvh.me')) {
     sub = host.replace('.lvh.me', '');
@@ -71,6 +79,9 @@ app.use(async (req, res, next) => {
     const tenantCode = tenantKey.toUpperCase(); // e.g. "TX10"
 
     try {
+      // SECURITY: tenant resolution is driven ONLY by the Host header.
+      // No query parameter may select a client — OAuth clientId/clientSecret
+      // are credentials and must never influence routing or appear in a URL.
       const client = await Client.findOne({
         $or: [
           { shopSlug: cleanSub },
@@ -121,13 +132,12 @@ app.use(async (req, res, next) => {
       // 4. ACTIVE CUSTOMER -> PROXY TO INSTANCE
       let target = clientTargetCache.get(cleanSub);
       if (!target) {
-        const defaultPort = (client.softwareProduct === 'TEXTILE_POS') ? 5174 
-          : (client.softwareProduct === 'DELIVERY_CHALLAN') ? 5176 
-          : 5173;
-        const assignedPort = client.portForwarding?.assignedPort || client.assignedPort || defaultPort;
-        const targetIp = client.portForwarding?.targetIp || '127.0.0.1';
-        const ip = (targetIp === '127.0.0.1') ? 'localhost' : targetIp;
-        target = `http://${ip}:${assignedPort}`;
+        // Route by APPLICATION only. The Host header already identifies the
+        // customer, so there is no per-customer port or IP — every customer
+        // of a product shares that product's single process. Reading
+        // client.portForwarding here was redundant and, when stale, could
+        // send a customer's traffic into a different product's process.
+        target = `http://localhost:${appPortFor(client.softwareProduct)}`;
         clientTargetCache.set(cleanSub, target);
       }
 
@@ -147,6 +157,16 @@ app.use(async (req, res, next) => {
 });
 
 app.use(express.json({ limit: '10mb' }));
+
+// Ensure database connection is ready for serverless requests
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 // Request logger
 app.use((req, res, next) => {
@@ -172,6 +192,8 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/v1/oauth', oauthRoutes);
 app.use('/api/oauth', oauthRoutes);
 app.use('/api/v1/activity', activityRoutes);
+app.use('/api/plan-tiers', planTierRoutes);
+app.use('/api/v1/plan-tiers', planTierRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

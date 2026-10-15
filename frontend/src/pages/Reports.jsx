@@ -71,24 +71,40 @@ export default function Reports() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div className="w-full flex-1 flex flex-col p-4 sm:p-6 space-y-4 overflow-y-auto">
+      {/* Top Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold text-ink">Reports</h1>
-          <p className="text-sm text-gray-500 mt-1">Pending, fully paid and unpaid invoice lists with export options</p>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <Icon name="bill" className="w-6 h-6 text-[#65a30d]" />
+            Payment &amp; Billing Reports
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Audit pending balances, fully paid settlements, and revenue summaries with instant export options.
+          </p>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-outline px-4 py-2.5" onClick={() => handleExport('pdf')} disabled={!!exporting}>
-            <Icon name="print" className="w-4 h-4" /> {exporting === 'pdf' ? 'Exporting...' : 'Export PDF'}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl border border-slate-300 shadow-xs transition"
+            onClick={() => handleExport('pdf')}
+            disabled={!!exporting}
+          >
+            <Icon name="print" className="w-4 h-4 text-slate-500" />
+            {exporting === 'pdf' ? 'Generating PDF...' : 'Export PDF'}
           </button>
-          <button className="btn-primary px-4 py-2.5" onClick={() => handleExport('xlsx')} disabled={!!exporting}>
-            <Icon name="bill" className="w-4 h-4" /> {exporting === 'xlsx' ? 'Exporting...' : 'Export Excel'}
+          <button
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition"
+            onClick={() => handleExport('xlsx')}
+            disabled={!!exporting}
+          >
+            <Icon name="bill" className="w-4 h-4 text-white" />
+            {exporting === 'xlsx' ? 'Exporting...' : 'Export Excel'}
           </button>
         </div>
       </div>
 
-      {/* Status tabs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {/* 4 Status KPI Metric Tabs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {TABS.map((t) => {
           const listCount = lists[t.key]?.length || 0;
           const isActive = tab === t.key;
@@ -96,68 +112,110 @@ export default function Reports() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`card p-5 text-left transition-all ${isActive ? 'ring-2 ring-brand-500 shadow-cardhover' : 'hover:shadow-cardhover'}`}
+              className={`p-4 text-left rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                isActive
+                  ? 'bg-white border-[#84cc16] ring-2 ring-[#84cc16]/30 shadow-md'
+                  : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
+              }`}
             >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${t.color}`}>
+              <div>
+                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{t.label}</div>
+                <div className="text-2xl font-black text-slate-900 mt-1">{listCount}</div>
+              </div>
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${t.color}`}>
                 <Icon name={t.icon} className="w-5 h-5" />
               </div>
-              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t.label}</div>
-              <div className="text-xl font-semibold text-ink">{listCount}</div>
             </button>
           );
         })}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="relative flex-1 min-w-[220px]">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"><Icon name="search" className="w-4 h-4" /></span>
-          <input className="input !pl-10" placeholder="Search by invoice # or customer..." value={search} onChange={(e) => setSearch(e.target.value)} />
+      {/* Filter and Real-time Summary Toolbar */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200">
+        <div className="relative flex-1">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+            <Icon name="search" className="w-4 h-4" />
+          </span>
+          <input
+            className="w-full pl-9 pr-4 py-2 text-xs font-medium rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-[#84cc16]"
+            placeholder="Filter by invoice #, customer name, or phone number..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-        <div className="flex gap-2 text-xs px-3 py-2 bg-white rounded-lg border border-gray-200 text-gray-500">
-          <span><b>{totals.count}</b> inv</span>
-          <span>· Total <b className="text-ink">{money(totals.grand)}</b></span>
-          <span>· Collected <b className="text-emerald-600">{money(totals.paidAmt)}</b></span>
-          <span>· Balance <b className="text-amber-600">{money(totals.bal)}</b></span>
+
+        <div className="flex items-center gap-3 text-xs px-3.5 py-2 bg-slate-50 rounded-lg border border-slate-200 text-slate-600 font-semibold flex-wrap">
+          <span>Records: <b className="text-slate-900">{totals.count}</b></span>
+          <span className="text-slate-300">|</span>
+          <span>Billed: <b className="text-slate-900">{money(totals.grand)}</b></span>
+          <span className="text-slate-300">|</span>
+          <span>Collected: <b className="text-emerald-700 font-bold">{money(totals.paidAmt)}</b></span>
+          <span className="text-slate-300">|</span>
+          <span>Outstanding: <b className="text-amber-700 font-bold">{money(totals.bal)}</b></span>
         </div>
       </div>
 
-      <div className="card overflow-hidden">
+      {/* Data Table */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex-1">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold">
               <tr>
-                <th className="th">Invoice #</th>
-                <th className="th">Customer</th>
-                <th className="th">Date</th>
-                <th className="th text-right">Total</th>
-                <th className="th text-right">Paid</th>
-                <th className="th text-right">Balance</th>
-                <th className="th">Method</th>
-                <th className="th">Status</th>
-                <th className="th"></th>
+                <th className="px-4 py-3">INVOICE #</th>
+                <th className="px-4 py-3">CUSTOMER</th>
+                <th className="px-4 py-3">DATE</th>
+                <th className="px-4 py-3 text-right">TOTAL (INR)</th>
+                <th className="px-4 py-3 text-right">PAID (INR)</th>
+                <th className="px-4 py-3 text-right">BALANCE DUE</th>
+                <th className="px-4 py-3">METHOD</th>
+                <th className="px-4 py-3">STATUS</th>
+                <th className="px-4 py-3 text-right">ACTION</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={9} className="td text-center py-10 text-gray-400">Loading invoices...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={9} className="td text-center py-10 text-gray-400">No invoices in this category.</td></tr>
-              ) : filtered.map((b) => (
-                <tr key={b._id} className="hover:bg-gray-50/60 cursor-pointer" onClick={() => navigate(`/billing/${b._id}`)}>
-                  <td className="td font-semibold text-brand-600">{b.invoiceNumber}</td>
-                  <td className="td">
-                    <div className="font-medium">{b.customerName || 'Walk-in Customer'}</div>
-                    <div className="text-xs text-gray-400">{b.customerPhone || ''}</div>
+                <tr>
+                  <td colSpan={9} className="text-center py-12 text-slate-400">
+                    <Icon name="refresh" className="w-6 h-6 animate-spin mx-auto mb-2 text-[#65a30d]" />
+                    Loading report invoices...
                   </td>
-                  <td className="td text-xs text-gray-500">{new Date(b.invoiceDate).toLocaleDateString()}</td>
-                  <td className="td text-right font-semibold">{money(b.grandTotal)}</td>
-                  <td className="td text-right text-emerald-600">{money(b.amountPaid)}</td>
-                  <td className="td text-right font-medium text-amber-600">{money(b.balanceDue)}</td>
-                  <td className="td text-xs">{b.paymentMethod}</td>
-                  <td className="td"><Badge value={b.status} /></td>
-                  <td className="td text-right"><Icon name="eye" className="w-4 h-4 inline text-gray-300" /></td>
                 </tr>
-              ))}
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="text-center py-12 text-slate-400 font-medium">
+                    No invoices matching this filter category.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((b) => (
+                  <tr
+                    key={b._id}
+                    className="hover:bg-slate-50/80 cursor-pointer transition"
+                    onClick={() => navigate(`/billing/${b._id}`)}
+                  >
+                    <td className="px-4 py-3 font-mono font-bold text-[#65a30d]">{b.invoiceNumber}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-bold text-slate-900">{b.customerName || 'Walk-in Customer'}</div>
+                      <div className="text-[11px] text-slate-400 font-mono">{b.customerPhone || '—'}</div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{new Date(b.invoiceDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                    <td className="px-4 py-3 text-right font-black text-slate-900">{money(b.grandTotal)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-emerald-700">{money(b.amountPaid)}</td>
+                    <td className="px-4 py-3 text-right font-black text-amber-700">{money(b.balanceDue)}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-700">{b.paymentMethod || 'Cash'}</td>
+                    <td className="px-4 py-3"><Badge value={b.status} /></td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => navigate(`/billing/${b._id}`)}
+                        className="p-1.5 text-slate-500 hover:text-[#65a30d] hover:bg-slate-100 rounded-lg transition"
+                        title="View Full Invoice"
+                      >
+                        <Icon name="eye" className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

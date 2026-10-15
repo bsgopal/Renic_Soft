@@ -9,34 +9,49 @@ import { protect, authorize } from '../middleware/auth.js';
 import { sendLicenseEmail, sendActivationOtpEmail } from '../utils/mailer.js';
 import { encryptLicense, decryptLicense } from '../utils/licenseCrypto.js';
 import { invalidateProxyCache } from '../utils/proxyCache.js';
+import { buildCustomerUrl, buildCustomerUrlForProduct, CUSTOMER_DOMAIN } from '../utils/customerUrl.js';
 import { notifyClientOnboarded, notifyLicenseStatus } from '../utils/whatsappNotifier.js';
 import { provisionTenantDatabase } from '../services/tenantProvisioningService.js';
 import { convertTrialToProduction } from '../services/trialMigrationService.js';
 import { generateClientCredentials } from './oauthRoutes.js';
+import { backendPortFor, appPortFor } from '../config/appPorts.js';
 
 const router = express.Router();
 
 const broadcastOtaUpdateToTenant = async (client) => {
   if (!client) return;
-  const portMap = {
-    'DELIVERY_CHALLAN': 5003,
-    'TEXTILE_POS': 5002,
-    'WA_INSTA_AUTOMATION': 5000
-  };
-  const backendPort = portMap[client.softwareProduct];
+  const backendPort = backendPortFor(client.softwareProduct);
   if (!backendPort) return;
   try {
-    await axios.post(`http://localhost:${backendPort}/api/tenant/sync-push`, {
+    const otaPayload = {
+      clientName: client.name,
       customerCode: client.customerCode,
-      screenPermissions: client.screenPermissions,
-      licenseStatus: client.licenseStatus,
+      subdomain: client.subdomain || client.shopSlug || '',
+      planTier: client.planTier || 'pro',
+      billingCycle: client.billingCycle || '3_MONTHS',
+      licenseStart: client.licenseStart,
       licenseEnd: client.licenseEnd,
+      licenseStatus: client.licenseStatus || 'active',
+      screenPermissions: client.screenPermissions || {},
+      fieldConfig: client.fieldConfig || {},
       oauthEnforced: !!client.oauthEnforced,
       clientId: client.clientId,
-      whatsappSenderMode: client.whatsappSenderMode || 'META',
-      dockerThrottleSeconds: client.dockerThrottleSeconds || 6
-    }, { timeout: 2000 });
-    console.log(`[OTA Instant Push] Broadcasted update to ${client.softwareProduct} on port ${backendPort}`);
+      clientSecret: client.clientSecret,
+      clientSecretHash: client.clientSecretHash,
+      whatsappSenderMode: client.whatsappSenderMode || 'DOCKER',
+      dockerThrottleSeconds: client.dockerThrottleSeconds || 6,
+      businessType: client.businessType || '',
+      solutionMode: client.solutionMode || '',
+      solutionModes: client.solutionModes || [],
+      customTerminology: client.customTerminology || {}
+    };
+
+    // 1. Sync local License record
+    await axios.post(`http://localhost:${backendPort}/api/v1/license/sync`, otaPayload, { timeout: 3000 }).catch(() => {});
+    // 2. Broadcast live screen permissions and settings
+    await axios.post(`http://localhost:${backendPort}/api/tenant/sync-push`, otaPayload, { timeout: 3000 }).catch(() => {});
+
+    console.log(`[OTA Instant Push] Broadcasted update for '${client.name}' to ${client.softwareProduct} on port ${backendPort}`);
   } catch (err) {
     // Non-blocking if tenant backend is offline
   }
@@ -234,9 +249,18 @@ router.get('/', protect, authorize('platform_owner'), async (req, res) => {
 // @route   POST /api/licenses/preflight-check
 router.post('/preflight-check', protect, authorize('platform_owner', 'admin'), async (req, res) => {
   try {
-    const { customerCode, shopSlug, assignedPort, softwareProduct, whatsappSenderMode, excludeId } = req.body;
+    const { customerCode, shopSlug, softwareProduct, whatsappSenderMode, excludeId } = req.body;
     const checks = {
       subdomainUnique: true,
+      subdomainMessage: '',
+      frontendReachable: false,
+      frontendPort: 0,
+      frontendLatencyMs: 0,
+      frontendMessage: '',
+      backendReachable: false,
+      backendPort: 0,
+      backendLatencyMs: 0,
+      backendMessage: '',
       portReachable: false,
       portLatencyMs: 0,
       dbReady: true,
@@ -249,32 +273,79 @@ router.post('/preflight-check', protect, authorize('platform_owner', 'admin'), a
 
     // 1. Check Subdomain / Code Uniqueness
     if (code) {
-      const query = { customerCode: code };
-      if (excludeId) query._id = { $ne: excludeId };
+      const query = { customerCode: new RegExp('^' + code + '$', 'i') };
+      if (excludeId) {
+        if (mongoose.Types.ObjectId.isValid(excludeId)) {
+          query._id = { $ne: new mongoose.Types.ObjectId(excludeId) };
+        } else {
+          query._id = { $ne: excludeId };
+        }
+      }
       const existing = await Client.findOne(query);
-      if (existing) checks.subdomainUnique = false;
+      if (existing) {
+        checks.subdomainUnique = false;
+        checks.subdomainMessage = `Customer code [${code}] is already assigned to ${existing.name || 'another client'}`;
+      } else {
+        checks.subdomainMessage = `Customer code [${code}] is valid and assigned to this instance`;
+      }
     }
 
-    // 2. Check Port Reachability
-    const port = Number(assignedPort);
-    if (port && port > 1000) {
+    // 2. Probe FRONTEND process for the product
+    const fePort = appPortFor(softwareProduct);
+    checks.frontendPort = fePort;
+    if (fePort && fePort > 1000) {
       const probeStart = Date.now();
       try {
-        await axios.get(`http://127.0.0.1:${port}/`, { timeout: 1500 });
-        checks.portReachable = true;
-        checks.portLatencyMs = Date.now() - probeStart;
+        await axios.get(`http://127.0.0.1:${fePort}/`, { timeout: 2000 });
+        checks.frontendReachable = true;
+        checks.frontendLatencyMs = Date.now() - probeStart;
+        checks.frontendMessage = `Frontend listening on port ${fePort} (${checks.frontendLatencyMs}ms)`;
       } catch (err) {
         if (err.response) {
-          checks.portReachable = true;
-          checks.portLatencyMs = Date.now() - probeStart;
+          checks.frontendReachable = true;
+          checks.frontendLatencyMs = Date.now() - probeStart;
+          checks.frontendMessage = `Frontend listening on port ${fePort} (HTTP ${err.response.status})`;
         } else {
-          checks.portReachable = false;
-          checks.portMessage = `Port ${port} offline or not bound yet`;
+          checks.frontendReachable = false;
+          checks.frontendMessage = `Frontend on port ${fePort} is offline or unreachable`;
         }
       }
     }
 
-    // 3. Check WAHA if WhatsApp is in Docker mode
+    // 3. Probe BACKEND process for the product
+    const bePort = backendPortFor(softwareProduct);
+    checks.backendPort = bePort;
+    if (bePort && bePort > 1000) {
+      const probeStart = Date.now();
+      try {
+        await axios.get(`http://127.0.0.1:${bePort}/health`, { timeout: 2000 });
+        checks.backendReachable = true;
+        checks.backendLatencyMs = Date.now() - probeStart;
+        checks.backendMessage = `Backend API operational on port ${bePort} (${checks.backendLatencyMs}ms)`;
+      } catch (err) {
+        try {
+          await axios.get(`http://127.0.0.1:${bePort}/api/health`, { timeout: 2000 });
+          checks.backendReachable = true;
+          checks.backendLatencyMs = Date.now() - probeStart;
+          checks.backendMessage = `Backend API operational on port ${bePort} (${checks.backendLatencyMs}ms)`;
+        } catch (beErr) {
+          if (beErr.response) {
+            checks.backendReachable = true;
+            checks.backendLatencyMs = Date.now() - probeStart;
+            checks.backendMessage = `Backend API responding on port ${bePort} (HTTP ${beErr.response.status})`;
+          } else {
+            checks.backendReachable = false;
+            checks.backendMessage = `Backend API on port ${bePort} is offline or unreachable`;
+          }
+        }
+      }
+    }
+
+    // Set backwards-compatible portReachable
+    checks.portReachable = checks.frontendReachable && checks.backendReachable;
+    checks.portLatencyMs = Math.max(checks.frontendLatencyMs, checks.backendLatencyMs);
+
+    // 4. Check WAHA if WhatsApp is in Docker mode
     if (softwareProduct === 'WA_INSTA_AUTOMATION' && whatsappSenderMode === 'DOCKER') {
       try {
         await axios.get('http://127.0.0.1:3000/api/sessions', { timeout: 1500 });
@@ -286,11 +357,24 @@ router.post('/preflight-check', protect, authorize('platform_owner', 'admin'), a
       }
     }
 
-    const allPassed = checks.subdomainUnique;
-    res.json({ success: true, ready: allPassed, checks });
+    // Calculate real health score
+    let score = 0;
+    if (checks.subdomainUnique) score += 30;
+    if (checks.frontendReachable) score += 35;
+    if (checks.backendReachable) score += 35;
+
+    const allPassed = checks.subdomainUnique && checks.frontendReachable && checks.backendReachable;
+
+    res.json({
+      success: true,
+      passed: allPassed,
+      ready: allPassed,
+      healthScore: score,
+      checks
+    });
   } catch (err) {
     console.error('Preflight check error:', err);
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, passed: false, ready: false, message: err.message });
   }
 });
 
@@ -308,9 +392,6 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
     billingCycle = '1_MONTH',
     featurePermissions,
     screenPermissions,
-    targetIp = '127.0.0.1',
-    assignedPort,
-    connectionType = 'PORT_FORWARD_ROUTER',
     activateImmediately = false,
     licenseStatus,
     isTrial = false,
@@ -320,22 +401,40 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
     pricingConfig
   } = req.body;
 
-  if (!name || !ownerEmail || !ownerMobile || !ownerPassword) {
-    return res.status(400).json({ message: 'Shop name, owner email, mobile, and password are required' });
+  const effectiveName = (name || req.body.storeName || '').trim();
+  const effectiveEmail = (ownerEmail || req.body.pendingOwnerEmail || req.body.email || '').trim();
+  const effectiveMobile = (ownerMobile || req.body.pendingOwnerMobile || contact || req.body.phone || '').trim();
+  let effectivePassword = (ownerPassword || req.body.pendingOwnerPassword || '').trim();
+  if (!effectivePassword) {
+    effectivePassword = `Renic@${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+
+  if (!effectiveName || !effectiveEmail || !effectiveMobile) {
+    return res.status(400).json({ message: 'Shop name, owner email, and mobile are required' });
+  }
+
+  // Enforce Solution Mode selection for WhatsApp Automation Suite
+  if (softwareProduct === 'WA_INSTA_AUTOMATION') {
+    const hasMode = req.body.solutionMode || (Array.isArray(req.body.solutionModes) && req.body.solutionModes.length > 0);
+    if (!hasMode) {
+      return res.status(400).json({ message: 'Operational Solution Mode is required for WhatsApp Automation.' });
+    }
   }
 
   try {
-    const rawCode = (customerCode || subdomain || name).trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
-    const code = rawCode || 'CLIENT01';
+    const rawCode = (customerCode || subdomain || effectiveName).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    const code = rawCode || 'client01';
     const slug = (shopSlug || subdomain || code).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
 
     const trialDuration = Boolean(isTrial) ? (Number(trialDays) || 7) : parseInt(licenseDurationDays || 30);
     const licenseEnd = new Date();
     licenseEnd.setDate(licenseEnd.getDate() + trialDuration);
 
-    const hashedPassword = await bcrypt.hash(ownerPassword, 10);
+    const hashedPassword = await bcrypt.hash(effectivePassword, 10);
 
-    const portNum = Number(assignedPort) || (softwareProduct === 'TEXTILE_POS' ? 5174 : softwareProduct === 'DELIVERY_CHALLAN' ? 5176 : 5173);
+    // Port follows the PRODUCT (one shared process per product), never a
+    // customer-supplied value. See config/appPorts.js.
+    const portNum = appPortFor(softwareProduct);
 
     const defaultFeatures = {
       quickReplies: true,
@@ -368,10 +467,20 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
       : `http://${slug}.lvh.me:${process.env.PORT || 5050}`;
     const finalHostingUrl = req.body.fullSaaSDomain || (req.body.customDomain ? `https://${req.body.customDomain.trim()}` : computedHostingUrl);
 
-    const targetDbName = Boolean(isTrial) ? 'renic_trial_sandbox' : `renic_tenant_${code.toLowerCase()}`;
+    const targetDbName = req.body.databaseName?.trim() ||
+      (softwareProduct === 'SIMPLE_BILLING'
+        ? (Boolean(isTrial) ? `simple_billing_trial-${code.toLowerCase()}` : `simple_billing-${code.toLowerCase()}`)
+        : (softwareProduct === 'PAWN_BROKING' || softwareProduct === 'PAWNBOOK_PRO')
+          ? (Boolean(isTrial) ? `pawnbroking_trial-${code.toLowerCase()}` : `pawnbroking-${code.toLowerCase()}`)
+          : (Boolean(isTrial) ? `renic_trial_${code.toLowerCase()}` : `renic_tenant_${code.toLowerCase()}`));
+
+    const finalSolutionModes = Array.isArray(req.body.solutionModes) && req.body.solutionModes.length > 0
+      ? req.body.solutionModes
+      : (req.body.solutionMode ? [req.body.solutionMode] : []);
+    const finalSolutionMode = req.body.solutionMode || finalSolutionModes.join(',');
 
     const newClient = await Client.create({
-      name: name.trim(),
+      name: effectiveName,
       customerCode: code,
       shopSlug: slug,
       subdomain: slug,
@@ -380,6 +489,10 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
       isTrial: Boolean(isTrial),
       trialDays: Number(trialDays) || 7,
       softwareProduct,
+      solutionMode: finalSolutionMode,
+      solutionModes: finalSolutionModes,
+      businessType: req.body.businessType || '',
+      customTerminology: req.body.customTerminology || {},
       billingCycle,
       whatsappSenderMode: req.body.whatsappSenderMode || 'META',
       dockerThrottleSeconds: Number(req.body.dockerThrottleSeconds) || 6,
@@ -403,7 +516,7 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
       address: address || '',
       contact: contact || '',
       licenseKey: req.body.licenseKey || ('RENIC-' + code + '-' + crypto.randomBytes(4).toString('hex').toUpperCase()),
-      licenseStatus: isImmediatelyActive ? 'active' : 'pending_activation',
+      licenseStatus: Boolean(isTrial) ? 'trial' : (isImmediatelyActive ? 'active' : 'pending_activation'),
       licenseStart: new Date().toISOString(),
       licenseEnd: licenseEnd.toISOString(),
       planTier: planTier || 'basic',
@@ -413,18 +526,17 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
       clientSecret: finalClientSecret,
       clientSecretHash: finalSecretHash,
       apiSecretKey: finalClientSecret,
-      oauthEnforced: Boolean(req.body.oauthEnforced),
+      oauthEnforced: req.body.oauthEnforced !== undefined ? Boolean(req.body.oauthEnforced) : true,
+      whatsappSenderMode: (req.body.whatsappSenderMode || 'DOCKER').toUpperCase(),
+      dockerThrottleSeconds: Number(req.body.dockerThrottleSeconds) || 6,
       portForwarding: {
-        targetIp: (targetIp || '127.0.0.1').trim(),
-        assignedPort: portNum,
-        connectionType: connectionType || 'PORT_FORWARD_ROUTER',
-        publicWebUrl: `https://${slug}.dm.renicsoft.com`,
+        publicWebUrl: buildCustomerUrlForProduct({ customerCode: code }, softwareProduct),
         status: 'online',
         lastPingAt: new Date()
       },
-      pendingOwnerName: contact || `${name} Owner`,
-      pendingOwnerEmail: ownerEmail,
-      pendingOwnerMobile: ownerMobile,
+      pendingOwnerName: contact || `${effectiveName} Owner`,
+      pendingOwnerEmail: effectiveEmail,
+      pendingOwnerMobile: effectiveMobile,
       pendingOwnerPassword: hashedPassword,
       pendingOwnerRole: 'admin',
       telemetry: {
@@ -435,30 +547,73 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
       }
     });
 
-    // Automatically provision dedicated or trial tenant database (1-to-many isolation)
+    // Automatically provision dedicated or isolated trial tenant database (1-to-many isolation)
     let provisioning = null;
     try {
       provisioning = await provisionTenantDatabase({
-        customerCode: Boolean(isTrial) ? 'renic_trial_sandbox' : code,
-        shopName: name.trim(),
-        ownerEmail,
-        ownerMobile,
-        ownerPassword,
+        customerCode: code,
+        shopName: effectiveName,
+        ownerEmail: effectiveEmail,
+        ownerMobile: effectiveMobile,
+        ownerPassword: effectivePassword,
         softwareProduct,
         clientId: finalClientId,
-        planTier
+        planTier,
+        isTrial: Boolean(isTrial),
+        databaseName: targetDbName,
+        solutionMode: finalSolutionMode,
+        solutionModes: finalSolutionModes,
+        businessType: req.body.businessType || '',
+        customTerminology: req.body.customTerminology || {},
+        screenPermissions: screenPermissions || {},
+        whatsappSenderMode: (req.body.whatsappSenderMode || 'DOCKER').toUpperCase(),
+        dockerThrottleSeconds: Number(req.body.dockerThrottleSeconds) || 6
       });
     } catch (provErr) {
       console.error('[Tenant Auto-Provisioning Error]:', provErr);
     }
 
+    // Also seed user in Master HQ users collection for unified authentication
+    try {
+      const User = (await import('../models/User.js')).default;
+      await User.findOneAndUpdate(
+        {
+          $or: [
+            { email: effectiveEmail.toLowerCase() },
+            { mobile: effectiveMobile }
+          ]
+        },
+        {
+          $set: {
+            name: contact || `${effectiveName} Admin`,
+            email: effectiveEmail.toLowerCase().trim(),
+            mobile: effectiveMobile.trim(),
+            password: hashedPassword,
+            role: 'client_admin',
+            clientId: newClient._id,
+            isActive: true,
+            updatedAt: new Date()
+          },
+          $setOnInsert: {
+            createdAt: new Date()
+          }
+        },
+        { upsert: true, new: true }
+      );
+    } catch (userErr) {
+      console.warn('[Master User Seeding Warning]:', userErr.message);
+    }
+
     invalidateProxyCache(code);
     invalidateProxyCache(slug);
 
+    // Instant Over-The-Air push to target application instance
+    await broadcastOtaUpdateToTenant(newClient);
+
     // Auto-dispatch WhatsApp onboarding alert to client's mobile
     notifyClientOnboarded(newClient, {
-      mobile: ownerMobile,
-      password: ownerPassword
+      mobile: effectiveMobile,
+      password: effectivePassword
     }).catch(err => console.warn('[Renic WhatsApp Onboard Alert] Error:', err.message));
 
     res.status(201).json({
@@ -478,6 +633,19 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
     });
   } catch (error) {
     console.error('Create client error:', error);
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || {})[0] || 'customer code or license key';
+      return res.status(400).json({ 
+        message: `An instance with this ${field} already exists. Please choose a different code/subdomain or edit the existing client.`, 
+        error: error.message 
+      });
+    }
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        message: `Validation Error: ${error.message}`, 
+        error: error.message 
+      });
+    }
     res.status(500).json({ message: 'Error creating client shop profile', error: error.message });
   }
 });
@@ -530,10 +698,10 @@ router.put('/:id', protect, authorize('platform_owner', 'admin'), async (req, re
     const {
       name, customerCode, shopSlug, subdomain, customDomain, fullSaaSDomain,
       pendingOwnerName, pendingOwnerEmail, pendingOwnerMobile, pendingOwnerPassword, pendingOwnerRole,
-      targetIp, assignedPort, connectionType,
       planTier, licenseStatus, licenseEnd, durationDays, billingCycle, maxFloors, maxUsers, maxProducts,
       softwareProduct, screenPermissions, featurePermissions,
-      stockConfig, billingConfig, pricingConfig, isTrial, trialDays, databaseName
+      stockConfig, billingConfig, pricingConfig, isTrial, trialDays, databaseName,
+      fieldConfig
     } = req.body;
 
     const oldCode = client.customerCode;
@@ -542,12 +710,12 @@ router.put('/:id', protect, authorize('platform_owner', 'admin'), async (req, re
     if (name) client.name = name.trim();
 
     if (customerCode) {
-      const cleanCode = customerCode.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+      const cleanCode = customerCode.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
       if (cleanCode && cleanCode !== client.customerCode) {
         client.securitySettings = client.securitySettings || {};
         client.securitySettings.previousSlugs = client.securitySettings.previousSlugs || [];
         client.securitySettings.previousSlugs.push({
-          slug: client.customerCode || 'UNASSIGNED',
+          slug: client.customerCode || 'unassigned',
           rotatedAt: new Date(),
           reason: 'Customer Code manually updated'
         });
@@ -577,14 +745,12 @@ router.put('/:id', protect, authorize('platform_owner', 'admin'), async (req, re
       client.pendingOwnerPassword = await bcrypt.hash(pendingOwnerPassword.trim(), 10);
     }
 
-    // Network / Port Forwarding
+    // Per-customer targetIp / assignedPort / connectionType updates were
+    // removed: a customer's port is not configurable, it follows the product.
+    // Re-derive it so any stale value from an older record converges.
     client.portForwarding = client.portForwarding || {};
-    if (targetIp) client.portForwarding.targetIp = targetIp.trim();
-    if (assignedPort) {
-      client.portForwarding.assignedPort = Number(assignedPort);
-      client.assignedPort = Number(assignedPort);
-    }
-    if (connectionType) client.portForwarding.connectionType = connectionType;
+    client.assignedPort = appPortFor(softwareProduct || client.softwareProduct);
+    client.portForwarding.assignedPort = client.assignedPort;
 
     // License & Plan
     if (planTier) {
@@ -610,15 +776,18 @@ router.put('/:id', protect, authorize('platform_owner', 'admin'), async (req, re
     // Software Product & Permissions
     if (softwareProduct) {
       client.softwareProduct = softwareProduct.trim();
-      if (!assignedPort) {
-        const prodPort = (client.softwareProduct === 'TEXTILE_POS') ? 5174 
-          : (client.softwareProduct === 'DELIVERY_CHALLAN') ? 5176 
-          : 5173;
-        client.assignedPort = prodPort;
-        if (client.portForwarding) client.portForwarding.assignedPort = prodPort;
-      }
+      // Port derives from the product only. A submitted assignedPort is
+      // deliberately ignored — it used to be able to point a customer's URL
+      // at a different product's process.
+      client.assignedPort = appPortFor(client.softwareProduct);
+      if (client.portForwarding) client.portForwarding.assignedPort = client.assignedPort;
     }
     if (screenPermissions !== undefined) client.screenPermissions = screenPermissions;
+    if (fieldConfig !== undefined) client.fieldConfig = fieldConfig;
+    if (req.body.solutionMode !== undefined) client.solutionMode = req.body.solutionMode;
+    if (req.body.solutionModes !== undefined) client.solutionModes = Array.isArray(req.body.solutionModes) ? req.body.solutionModes : (req.body.solutionMode ? [req.body.solutionMode] : []);
+    if (req.body.businessType !== undefined) client.businessType = req.body.businessType;
+    if (req.body.customTerminology !== undefined) client.customTerminology = req.body.customTerminology;
     if (req.body.whatsappSenderMode) client.whatsappSenderMode = req.body.whatsappSenderMode;
     if (req.body.dockerThrottleSeconds !== undefined) client.dockerThrottleSeconds = Number(req.body.dockerThrottleSeconds) || 6;
     if (req.body.oauthEnforced !== undefined) client.oauthEnforced = Boolean(req.body.oauthEnforced);
@@ -640,16 +809,67 @@ router.put('/:id', protect, authorize('platform_owner', 'admin'), async (req, re
         {
           $set: {
             screenPermissions: client.screenPermissions,
+            fieldConfig: client.fieldConfig,
             oauthEnforced: client.oauthEnforced,
             stockConfig: client.stockConfig,
             billingConfig: client.billingConfig,
             pricingConfig: client.pricingConfig,
             planTier: client.planTier,
             licenseStatus: client.licenseStatus,
-            licenseEnd: client.licenseEnd
+            licenseEnd: client.licenseEnd,
+            whatsappSenderMode: (client.whatsappSenderMode || 'DOCKER').toUpperCase(),
+            dockerThrottleSeconds: Number(client.dockerThrottleSeconds) || 6
           }
         }
       );
+      await tenantDb.collection('shopconfigs').updateMany(
+        {},
+        {
+          $set: {
+            screenPermissions: client.screenPermissions,
+            oauthEnforced: client.oauthEnforced,
+            whatsappSenderMode: (client.whatsappSenderMode || 'DOCKER').toUpperCase(),
+            metaApiEnabled: (client.whatsappSenderMode || 'DOCKER').toUpperCase() === 'META',
+            dockerThrottleSeconds: Number(client.dockerThrottleSeconds) || 6,
+            businessType: client.businessType || '',
+            solutionMode: client.solutionMode || '',
+            solutionModes: client.solutionModes || [],
+            customTerminology: client.customTerminology || {}
+          }
+        }
+      );
+      await tenantDb.collection('tenant_settings').updateMany(
+        {},
+        {
+          $set: {
+            solutionMode: client.solutionMode,
+            solutionModes: client.solutionModes || [],
+            businessType: client.businessType,
+            customTerminology: client.customTerminology,
+            screenPermissions: client.screenPermissions,
+            planTier: client.planTier,
+            whatsappSenderMode: (client.whatsappSenderMode || 'DOCKER').toUpperCase(),
+            dockerThrottleSeconds: Number(client.dockerThrottleSeconds) || 6
+          }
+        }
+      );
+      if (client.customTerminology && Object.keys(client.customTerminology).length > 0) {
+        const sLabel = client.customTerminology.serviceLabel || 'Service';
+        const stLabel = client.customTerminology.staffLabel || 'Staff';
+        const cLabel = client.customTerminology.clientLabel || 'Customer';
+        await tenantDb.collection('appointmentsettings').updateMany(
+          {},
+          {
+            $set: {
+              terminology: client.customTerminology,
+              customTerminology: client.customTerminology,
+              welcomeMessage: `👋 Welcome to ${client.name}! I can help you schedule your ${sLabel.toLowerCase()} with our ${client.customTerminology.staffPluralLabel || stLabel}. Please choose an option below:`,
+              confirmationTemplate: `✅ *Booking Confirmed!*\n\n📅 Date: {date}\n⏰ Time: {time}\n👤 ${stLabel}: {staffName}\n🩺 ${sLabel}: {serviceName}\n🆔 Booking ID: #{bookingRef}\n\nTo manage your visit, reply *MANAGE*.`,
+              staffAlertTemplate: `🔔 *New Booking Confirmed!*\n\n👤 ${cLabel}: {customerName} ({customerPhone})\n📅 Date: {date}\n⏰ Time: {time}\n🩺 ${sLabel}: {serviceName}\n🆔 Ref: #{bookingRef}`
+            }
+          }
+        );
+      }
     } catch (syncErr) {
       console.warn('[Tenant OTA Sync Warning]:', syncErr.message);
     }
@@ -828,12 +1048,7 @@ router.delete('/:id', protect, authorize('platform_owner', 'admin'), async (req,
     if (client.subdomain) invalidateProxyCache(client.subdomain);
     invalidateProxyCache(); // full global proxy cache flush
 
-    const portMap = {
-      'DELIVERY_CHALLAN': 5003,
-      'TEXTILE_POS': 5002,
-      'WA_INSTA_AUTOMATION': 5000
-    };
-    const backendPort = portMap[client.softwareProduct];
+    const backendPort = backendPortFor(client.softwareProduct);
     if (backendPort) {
       axios.post(`http://localhost:${backendPort}/api/tenant/sync-push`, {
         customerCode: client.customerCode,
@@ -843,6 +1058,17 @@ router.delete('/:id', protect, authorize('platform_owner', 'admin'), async (req,
         clientId: null,
         screenPermissions: {}
       }, { timeout: 2000 }).catch(() => {});
+    }
+
+    // Drop isolated tenant / trial database if exists
+    if (client.databaseName) {
+      try {
+        const tenantDb = mongoose.connection.useDb(client.databaseName, { useCache: true });
+        await tenantDb.dropDatabase();
+        console.log(`[Client Deletion] Dropped database '${client.databaseName}' for client [${client.customerCode}]`);
+      } catch (dropErr) {
+        console.warn(`[Client Deletion Warning] Failed to drop DB '${client.databaseName}':`, dropErr.message);
+      }
     }
 
     await Client.findByIdAndDelete(req.params.id);
@@ -968,7 +1194,7 @@ router.get('/:id/oauth-credentials', protect, authorize('platform_owner'), async
       await pushOAuthToClient(client, clientId, clientSecretHash);
     }
 
-    const liveUrl = `https://${slug}.renic.store`;
+    const liveUrl = buildCustomerUrlForProduct(client) || `https://${slug}.${CUSTOMER_DOMAIN}`;
     const localUrl = `http://localhost:5000`;
 
     res.json({
@@ -1020,6 +1246,26 @@ router.post('/:id/oauth-credentials/regenerate', protect, authorize('platform_ow
     });
   } catch (error) {
     res.status(500).json({ message: 'Error regenerating secret' });
+  }
+});
+
+// @desc    1-Click Master HQ: Convert Free Trial Customer to Dedicated Production Instance
+// @route   POST /api/clients/:id/convert-to-production
+// @access  Private (Platform Owner / Admin)
+router.post('/:id/convert-to-production', protect, authorize('platform_owner', 'admin'), async (req, res) => {
+  try {
+    const result = await convertTrialToProduction(req.params.id, req.body);
+    res.json({
+      success: true,
+      message: result.message,
+      targetDbName: result.targetDbName,
+      sourceDbName: result.sourceDbName,
+      client: result.client,
+      stats: result.stats
+    });
+  } catch (error) {
+    console.error('Trial to Production Conversion error:', error);
+    res.status(500).json({ success: false, message: 'Error converting trial to production: ' + error.message });
   }
 });
 

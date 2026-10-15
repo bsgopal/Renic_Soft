@@ -18,6 +18,7 @@ import ApiCredentialsHub from './pages/ApiCredentialsHub.jsx';
 import CustomerActivityReport from './pages/CustomerActivityReport.jsx';
 import AppDeployments from './pages/AppDeployments.jsx';
 import ApplicationHub from './pages/ApplicationHub.jsx';
+import PlanTiers from './pages/PlanTiers.jsx';
 
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 
@@ -36,11 +37,12 @@ export default function App() {
     <ErrorBoundary>
       <SnackbarProvider>
         <AuthProvider>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<Protected><Dashboard /></Protected>} />
             <Route path="/licenses" element={<Protected><Licenses /></Protected>} />
+            <Route path="/plan-tiers" element={<Protected><PlanTiers /></Protected>} />
             <Route path="/applications" element={<Protected><ApplicationHub /></Protected>} />
             <Route path="/deployments" element={<Protected><AppDeployments /></Protected>} />
             <Route path="/credentials" element={<Protected><ApiCredentialsHub /></Protected>} />

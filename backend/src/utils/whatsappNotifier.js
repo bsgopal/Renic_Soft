@@ -1,5 +1,6 @@
 // Renic_Soft/backend/src/utils/whatsappNotifier.js
 import axios from 'axios';
+import { buildCustomerUrlForProduct } from './customerUrl.js';
 
 const WA_NOTIFICATION_API = process.env.WA_NOTIFICATION_API || 'http://localhost:5000/api/notifications';
 
@@ -16,14 +17,16 @@ export async function notifyClientOnboarded(client, credentials = {}) {
 
     const clientName = client.name || 'Valued Client';
     const customerCode = client.customerCode || client.clientCode || 'RENIC';
-    const loginUrl = client.subdomain
-      ? `https://${client.subdomain}.renic.store`
-      : `http://localhost:5174/${customerCode.toLowerCase()}`;
+    const loginUrl = buildCustomerUrlForProduct(client) || `http://localhost:5174/${customerCode.toLowerCase()}`;
     const username = credentials.mobile || phone;
-    const password = credentials.password || '123456';
+    // Never invent a password: if none was supplied at provisioning time we
+    // omit the line instead of messaging the customer a credential that does
+    // not actually exist in their database.
+    const password = credentials.password || '';
+    const passwordLine = password ? `🔑 *Initial Password:* ${password}\n` : '';
     const expiry = client.licenseEnd ? new Date(client.licenseEnd).toLocaleDateString('en-IN') : '1 Year Active';
 
-    const message = `Welcome to *Renic Soft Enterprise Platform*, ${clientName}! 🚀\n\nYour software workspace has been provisioned and is ready for use.\n\n🌐 *Showroom Web Link:* ${loginUrl}\n🏢 *Customer Code:* ${customerCode}\n📱 *Username / Mobile:* ${username}\n🔑 *Initial Password:* ${password}\n📅 *License Valid Till:* ${expiry}\n\nFor support or billing inquiries, reply directly to this message. Welcome aboard! ✨`;
+    const message = `Welcome to *Renic Soft Enterprise Platform*, ${clientName}! 🚀\n\nYour software workspace has been provisioned and is ready for use.\n\n🌐 *Showroom Web Link:* ${loginUrl}\n🏢 *Customer Code:* ${customerCode}\n📱 *Username / Mobile:* ${username}\n${passwordLine}📅 *License Valid Till:* ${expiry}\n\nFor support or billing inquiries, reply directly to this message. Welcome aboard! ✨`;
 
     const res = await axios.post(`${WA_NOTIFICATION_API}/send-alert`, {
       phone,

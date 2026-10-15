@@ -1,21 +1,25 @@
 import dotenv from 'dotenv';
 import app from './app.js';
 import { connectDB } from './config/db.js';
+import { refreshAppSlugRegistry } from './utils/customerUrl.js';
 import { portState } from './config/serverState.js';
-import { runSeed } from './utils/seed.js';
 
 dotenv.config();
 
 // Database connects in parallel — the HTTP server binds immediately so the app
-// starts instantly even if MongoDB is unreachable (JSON file store fallback).
+// starts instantly even if MongoDB is unreachable.
+// NOTE: there is no auto-seed here. Users (including the platform owner) are
+// created deliberately — run `npm run seed` manually if you need the owner
+// account — so no hardcoded credentials are ever written on startup.
 const dbReady = (async () => {
   await connectDB();
-  try {
-    await runSeed();
-  } catch (err) {
-    console.error('Platform owner sync failed:', err);
-  }
   console.log(`[Database Mode]: ${process.env.MOCK_DB === 'true' ? 'MOCK (Local File Persistence)' : 'MONGODB'}`);
+
+  // Load appCode -> urlSlug from the Applications registry so customer URLs
+  // resolve for ANY application registered in Renic Soft, with no source
+  // change. Non-fatal on failure: URL building keeps the seeded fallback map.
+  const refreshed = await refreshAppSlugRegistry();
+  console.log(`[App Slug Registry]: ${refreshed ? 'loaded from Applications collection' : 'built-in fallback map'}`);
 })();
 
 dbReady.catch((err) => console.error('Database bootstrap failed:', err));
