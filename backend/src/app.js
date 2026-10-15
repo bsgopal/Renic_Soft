@@ -195,6 +195,16 @@ app.use('/api/v1/activity', activityRoutes);
 app.use('/api/plan-tiers', planTierRoutes);
 app.use('/api/v1/plan-tiers', planTierRoutes);
 
+// Root status check
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    service: 'Renic Soft Central SaaS API',
+    health: '/health',
+    time: new Date().toISOString()
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({

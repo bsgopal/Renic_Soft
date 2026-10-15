@@ -24,11 +24,16 @@ export const connectDB = async () => {
     return;
   }
 
-  const attempts = 3;
+  const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
+  if (!uri && process.env.VERCEL) {
+    throw new Error('MONGO_URI (or MONGODB_URI) is not defined in Vercel Environment Variables. Please set it in Vercel Settings -> Environment Variables.');
+  }
+  const effectiveUri = uri || 'mongodb://127.0.0.1:27017/renic_soft';
+
+  const attempts = process.env.VERCEL ? 1 : 3;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/renic_soft';
-      await mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 });
+      await mongoose.connect(effectiveUri, { serverSelectionTimeoutMS: 5000 });
       console.log('[Database Mode]: MONGODB Connected');
       return;
     } catch (err) {
@@ -39,7 +44,10 @@ export const connectDB = async () => {
     }
   }
 
-  console.error('[Fatal] MongoDB is unreachable after ' + attempts + ' attempts.');
+  console.error('[Fatal] MongoDB is unreachable.');
+  if (process.env.VERCEL) {
+    throw new Error('MongoDB is unreachable from Vercel. Please verify your MongoDB connection string and ensure IP 0.0.0.0/0 is whitelisted in MongoDB Atlas Network Access.');
+  }
   console.error('[Fatal] Refusing to start with mock/hardcoded data. Start MongoDB or fix MONGO_URI.');
   process.exit(1);
 };
