@@ -467,12 +467,13 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
       : `http://${slug}.lvh.me:${process.env.PORT || 5050}`;
     const finalHostingUrl = req.body.fullSaaSDomain || (req.body.customDomain ? `https://${req.body.customDomain.trim()}` : computedHostingUrl);
 
+    const cleanCodeSlug = code.toLowerCase().replace(/^(pawnbroking[-_]|simple_billing[-_]|renic_tenant_|renic_trial_)+/g, '');
     const targetDbName = req.body.databaseName?.trim() ||
       (softwareProduct === 'SIMPLE_BILLING'
-        ? (Boolean(isTrial) ? `simple_billing_trial-${code.toLowerCase()}` : `simple_billing-${code.toLowerCase()}`)
+        ? (Boolean(isTrial) ? `simple_billing_trial-${cleanCodeSlug}` : `simple_billing-${cleanCodeSlug}`)
         : (softwareProduct === 'PAWN_BROKING' || softwareProduct === 'PAWNBOOK_PRO')
-          ? (Boolean(isTrial) ? `pawnbroking_trial-${code.toLowerCase()}` : `pawnbroking-${code.toLowerCase()}`)
-          : (Boolean(isTrial) ? `renic_trial_${code.toLowerCase()}` : `renic_tenant_${code.toLowerCase()}`));
+          ? (Boolean(isTrial) ? `pawnbroking_trial-${cleanCodeSlug}` : `pawnbroking-${cleanCodeSlug}`)
+          : (Boolean(isTrial) ? `renic_trial_${cleanCodeSlug}` : `renic_tenant_${cleanCodeSlug}`));
 
     const finalSolutionModes = Array.isArray(req.body.solutionModes) && req.body.solutionModes.length > 0
       ? req.body.solutionModes
