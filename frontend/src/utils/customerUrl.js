@@ -38,7 +38,7 @@ export function buildCustomerUrl(client = {}, appSlug = '') {
   // Direct Vercel / Cloud URL Mapping (e.g. VITE_PAWN_BROKING_URL / VITE_SIMPLE_BILLING_URL)
   const directAppUrls = {
     billing: import.meta.env.VITE_SIMPLE_BILLING_URL || 'https://simplest-billing.vercel.app',
-    pb: import.meta.env.VITE_PAWN_BROKING_URL || 'https://pawn-broking.vercel.app',
+    pb: import.meta.env.VITE_PAWN_BROKING_URL || 'https://pawn-broking-svr6.vercel.app',
     pos: import.meta.env.VITE_TEXTILE_POS_URL,
     challan: import.meta.env.VITE_DELIVERY_CHALLAN_URL,
     wa: import.meta.env.VITE_WHATSAPP_AUTOMATION_URL

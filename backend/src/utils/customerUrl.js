@@ -67,7 +67,7 @@ export function buildCustomerUrl(client = {}, appSlug = '') {
   // Direct Vercel / Cloud URL Mapping (e.g. SIMPLE_BILLING_URL=https://simplest-billing.vercel.app)
   const directAppUrls = {
     billing: process.env.SIMPLE_BILLING_URL || 'https://simplest-billing.vercel.app',
-    pb: process.env.PAWN_BROKING_URL || 'https://pawn-broking.vercel.app',
+    pb: process.env.PAWN_BROKING_URL || 'https://pawn-broking-svr6.vercel.app',
     pos: process.env.TEXTILE_POS_URL,
     challan: process.env.DELIVERY_CHALLAN_URL,
     wa: process.env.WHATSAPP_AUTOMATION_URL

@@ -738,12 +738,12 @@ export default function Licenses() {
   const currentWizardBackendPort = backendPortForProduct(wizardForm.softwareProduct);
   const cleanCustomerCode = (wizardForm.customerCode || wizardForm.subdomain || 'client').toLowerCase();
   const knownFrontendBase = 
-    smartAppSlug === 'pb' ? (import.meta.env.VITE_PAWN_BROKING_URL || 'https://<your-pawnbroking-frontend>.vercel.app') :
-    smartAppSlug === 'billing' ? (import.meta.env.VITE_SIMPLE_BILLING_URL || 'https://<your-simple-billing-frontend>.vercel.app') :
+    smartAppSlug === 'pb' ? (import.meta.env.VITE_PAWN_BROKING_URL || 'https://pawn-broking-svr6.vercel.app') :
+    smartAppSlug === 'billing' ? (import.meta.env.VITE_SIMPLE_BILLING_URL || 'https://simplest-billing.vercel.app') :
     '';
   const cloudTenantUrl = wizardForm.fullSaaSDomain?.startsWith('http') && !wizardForm.fullSaaSDomain.includes('renictech.com') && !wizardForm.fullSaaSDomain.includes('lvh.me')
     ? wizardForm.fullSaaSDomain
-    : (knownFrontendBase ? `${knownFrontendBase.replace(/\/+$/, '')}?tenant=${cleanCustomerCode}` : `https://<your-frontend>.vercel.app?tenant=${cleanCustomerCode}`);
+    : (knownFrontendBase ? `${knownFrontendBase.replace(/\/+$/, '')}?tenant=${cleanCustomerCode}` : `https://pawn-broking-svr6.vercel.app?tenant=${cleanCustomerCode}`);
 
   const localDevUrl = `http://localhost:${currentWizardPort}`;
   const localLvhUrl = `http://${smartAppSlug}.${cleanCustomerCode}.lvh.me:${currentWizardPort}`;

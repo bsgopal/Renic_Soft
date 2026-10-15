@@ -461,11 +461,10 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
     const finalClientSecret = (req.body.clientSecret || genClientSecret).trim();
     const finalSecretHash = await bcrypt.hash(finalClientSecret, 10);
 
-    const defaultBaseDomain = process.env.HOSTING_BASE_DOMAIN;
-    const computedHostingUrl = defaultBaseDomain
-      ? `https://${slug}.${defaultBaseDomain}`
-      : `http://${slug}.lvh.me:${process.env.PORT || 5050}`;
-    const finalHostingUrl = req.body.fullSaaSDomain || (req.body.customDomain ? `https://${req.body.customDomain.trim()}` : computedHostingUrl);
+    const defaultHostingUrl = buildCustomerUrlForProduct({ customerCode: code, softwareProduct });
+    const finalHostingUrl = (req.body.fullSaaSDomain && !req.body.fullSaaSDomain.includes('renictech.com') && !req.body.fullSaaSDomain.includes('lvh.me'))
+      ? req.body.fullSaaSDomain
+      : (req.body.customDomain ? `https://${req.body.customDomain.trim()}` : defaultHostingUrl);
 
     const cleanCodeSlug = code.toLowerCase().replace(/^(pawnbroking[-_]|simple_billing[-_]|renic_tenant_|renic_trial_)+/g, '');
     const targetDbName = req.body.databaseName?.trim() ||
