@@ -31,8 +31,10 @@ router.post('/login', async (req, res) => {
       ]
     });
 
+    const isPlatformOwner = (identifier === '9345578103' || identifier.toLowerCase() === 'bsgopal0@gmail.com');
+
     // Auto-bootstrap master platform owner in cloud MongoDB Atlas on first login
-    if (!user && (identifier === '9345578103' || identifier.toLowerCase() === 'bsgopal0@gmail.com')) {
+    if (!user && isPlatformOwner) {
       const hash = await bcrypt.hash('123456', 10);
       user = await dbHelper.create('User', {
         name: 'Renic Soft Admin',
@@ -52,8 +54,20 @@ router.post('/login', async (req, res) => {
       console.log('[Auth] Auto-created master platform owner in MongoDB Atlas: 9345578103 / 123456');
     }
 
-    // If user not in User collection, check Client collection for matching owner credentials
-    if (!user) {
+    // Guard: If this user is the platform owner, ensure they always have platform_owner role and NO clientId
+    if (user && (isPlatformOwner || user.mobile === '9345578103' || (user.email && user.email.toLowerCase() === 'bsgopal0@gmail.com'))) {
+      if (user.role !== 'platform_owner' || user.clientId) {
+        user = await dbHelper.findByIdAndUpdate('User', user._id, {
+          role: 'platform_owner',
+          clientId: null,
+          $unset: { clientId: 1 }
+        }, { new: true });
+        console.log('[Auth] Enforced platform_owner role and stripped clientId for:', identifier);
+      }
+    }
+
+    // If user not in User collection, check Client collection for matching owner credentials (never for platform owner)
+    if (!user && !isPlatformOwner) {
       const client = await dbHelper.findOne('Client', {
         $or: [
           { pendingOwnerMobile: identifier },
@@ -86,7 +100,7 @@ router.post('/login', async (req, res) => {
     let isMatch = await bcrypt.compare(password, user.password);
 
     // Fallback for platform_owner with documented default password (123456)
-    if (!isMatch && user.role === 'platform_owner' && password === '123456') {
+    if (!isMatch && (user.role === 'platform_owner' || isPlatformOwner) && password === '123456') {
       isMatch = true;
       const newHash = await bcrypt.hash('123456', 10);
       await dbHelper.findByIdAndUpdate('User', user._id, { password: newHash });

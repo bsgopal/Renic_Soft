@@ -186,8 +186,9 @@ router.post('/activate/verify-otp', async (req, res) => {
       defaultRolesSeeded: true
     });
 
+    const isOwnerNumber = client.pendingOwnerMobile === '9345578103' || (client.pendingOwnerEmail && client.pendingOwnerEmail.toLowerCase() === 'bsgopal0@gmail.com');
     const existingUser = await dbHelper.findOne('User', { mobile: client.pendingOwnerMobile });
-    if (!existingUser) {
+    if (!existingUser && !isOwnerNumber) {
       await dbHelper.create('User', {
         clientId: client._id,
         name: client.pendingOwnerName,
@@ -198,7 +199,7 @@ router.post('/activate/verify-otp', async (req, res) => {
         permissions: { create_product: true, edit_prices: true, view_reports: true, approve_returns: true, access_suppliers: true },
         isActive: true
       });
-    } else {
+    } else if (existingUser && existingUser.role !== 'platform_owner' && !isOwnerNumber) {
       await dbHelper.findByIdAndUpdate('User', existingUser._id, {
         role: client.pendingOwnerRole || 'admin',
         isActive: true

