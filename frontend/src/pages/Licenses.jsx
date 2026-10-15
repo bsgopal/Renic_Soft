@@ -550,9 +550,10 @@ export default function Licenses() {
       // `portForwarding` is intentionally NOT part of the payload any more: a
       // customer's target IP / assigned port / connection type are not
       // configurable — routing is by Host header (config/appPorts.js).
+      const effectiveUrl = (wizardForm.fullSaaSDomain && wizardForm.fullSaaSDomain.trim()) || smartUrl;
       const payload = {
         ...wizardForm,
-        fullSaaSDomain: smartUrl
+        fullSaaSDomain: effectiveUrl
       };
 
       if (wizardMode === 'create') {
@@ -1609,64 +1610,44 @@ export default function Licenses() {
                 </div>
 
                 <div className="space-y-3">
-                  {/* 0. Cloud / Vercel Production Tenant URL */}
+                  {/* Primary Client SaaS Launch URL */}
                   <div className="p-3 bg-emerald-50/80 border border-emerald-300 rounded-lg text-xs space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-emerald-950 flex items-center gap-1.5">
-                        🚀 Vercel / Cloud URL (Give this to Client):
+                        🚀 Client Launch URL (Production URL for this Client):
                       </span>
                       <span className="text-[10px] text-emerald-800 font-semibold px-2 py-0.5 bg-emerald-100 rounded-full">Share with Store</span>
                     </div>
                     <p className="text-[11px] text-emerald-900 leading-relaxed">
-                      This is the live URL for your client. Opening this URL connects directly to their isolated database:
+                      This is the active URL for this client. You can edit or paste your production URL here, or use the auto-generated tenant link:
                     </p>
-                    <div className="font-mono text-[11px] text-emerald-950 font-bold bg-white p-2 rounded border border-emerald-300 flex items-center justify-between gap-2">
-                      <span className="truncate">{cloudTenantUrl}</span>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <CopyBtn text={cloudTenantUrl} label="Copy Client URL" />
-                        {wizardForm.ownerMobile && (
-                          <a
-                            href={`https://wa.me/${String(wizardForm.ownerMobile).replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello, your store software is active! Click here to login:\n${cloudTenantUrl}\n\nLogin Mobile: ${wizardForm.ownerMobile}\nPassword: 123456`)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="px-2 py-1 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center gap-1 shadow-2xs"
-                          >
-                            WhatsApp 💬
-                          </a>
-                        )}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={wizardForm.fullSaaSDomain || cloudTenantUrl}
+                        onChange={(e) => setWizardForm(prev => ({ ...prev, fullSaaSDomain: e.target.value }))}
+                        placeholder="https://your-frontend.vercel.app/?tenant=pb01"
+                        className="flex-1 font-mono text-[11px] text-emerald-950 font-bold bg-white p-2 rounded border border-emerald-300 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      <CopyBtn text={wizardForm.fullSaaSDomain || cloudTenantUrl} label="Copy Link" />
+                      {wizardForm.ownerMobile && (
                         <a
-                          href={cloudTenantUrl}
+                          href={`https://wa.me/${String(wizardForm.ownerMobile).replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello, your store software is active! Click here to login:\n${wizardForm.fullSaaSDomain || cloudTenantUrl}\n\nLogin Mobile: ${wizardForm.ownerMobile}\nPassword: 123456`)}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="px-2 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                          className="px-2.5 py-2 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg flex items-center gap-1 shadow-2xs shrink-0"
                         >
-                          Open ↗
+                          WhatsApp 💬
                         </a>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 1. Production VPS Route */}
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                        🌐 Production Multi-Tenant VPS Route:
-                      </span>
-                      <span className="text-[10px] text-slate-400">Requires DNS wildcard (*.renictech.com)</span>
-                    </div>
-                    <div className="font-mono text-[11px] text-slate-900 font-bold bg-white p-2 rounded border border-slate-200 flex items-center justify-between">
-                      <span className="truncate">{computedSmartUrl}</span>
-                      <div className="flex items-center gap-1.5">
-                        <CopyBtn text={computedSmartUrl} label="Copy VPS Route" />
-                        <a
-                          href={computedSmartUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-2 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg"
-                        >
-                          Open ↗
-                        </a>
-                      </div>
+                      )}
+                      <a
+                        href={wizardForm.fullSaaSDomain || cloudTenantUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-2 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg shrink-0"
+                      >
+                        Open ↗
+                      </a>
                     </div>
                   </div>
 
