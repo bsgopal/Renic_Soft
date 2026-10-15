@@ -52,6 +52,13 @@ const clientSchema = new mongoose.Schema({
   fullSaaSDomain: { type: String, default: '' },
   databaseName: { type: String, default: '' }, // e.g. renic_tenant_saraswat-tx or renic_trial_sandbox
 
+  // OAuth 2.0 Machine-to-Machine Credentials
+  clientId: { type: String, trim: true, sparse: true, index: true },
+  clientSecret: { type: String, trim: true },
+  clientSecretHash: { type: String },
+  apiSecretKey: { type: String },
+  oauthEnforced: { type: Boolean, default: true },
+
   // Trial Management
   isTrial: { type: Boolean, default: false },
   trialDays: { type: Number, default: 7 },
@@ -227,6 +234,6 @@ const clientSchema = new mongoose.Schema({
     default: 'pending'
   },
   lastSyncedAt: { type: Date }
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 export default mongoose.models.Client || mongoose.model('Client', clientSchema);
