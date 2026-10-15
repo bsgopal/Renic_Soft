@@ -40,13 +40,31 @@ const genId = () => {
 
 const toObjId = (v) => (v && v._id ? String(v._id) : v);
 
-const modelCache = new Map();
+import mongoose from 'mongoose';
+import Application from './Application.js';
+import ApplicationSyncLog from './ApplicationSyncLog.js';
+import Bill from './Bill.js';
+import Client from './Client.js';
+import PlanTier from './PlanTier.js';
+import Quotation from './Quotation.js';
+import Setting from './Setting.js';
+import TenantActivityLog from './TenantActivityLog.js';
+import User from './User.js';
+
+const STATIC_MODELS = {
+  Application,
+  ApplicationSyncLog,
+  Bill,
+  Client,
+  PlanTier,
+  Quotation,
+  Setting,
+  TenantActivityLog,
+  User
+};
+
 const getModel = async (model) => {
-  if (!modelCache.has(model)) {
-    const mod = await import(`../models/${model}.js`).then((m) => m.default);
-    modelCache.set(model, mod);
-  }
-  return modelCache.get(model);
+  return STATIC_MODELS[model] || mongoose.models[model] || mongoose.model(model);
 };
 
 /**
