@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const api = axios.create({ baseURL: '/api' });
+const rawBase = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).trim().replace(/\/+$/, '') : '';
+const apiBase = rawBase ? (rawBase.endsWith('/api') ? rawBase : `${rawBase}/api`) : '/api';
+
+const api = axios.create({ baseURL: apiBase });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('renic_token');
