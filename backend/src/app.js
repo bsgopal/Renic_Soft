@@ -211,6 +211,11 @@ app.get('/', (req, res) => {
   res.json({
     status: 'online',
     service: 'Renic Soft Central SaaS API',
+    url: req.url,
+    originalUrl: req.originalUrl,
+    matchedPath: req.headers['x-matched-path'],
+    forwardedUri: req.headers['x-forwarded-uri'],
+    headers: req.headers,
     health: '/health',
     time: new Date().toISOString()
   });
