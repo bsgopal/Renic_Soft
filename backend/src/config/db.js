@@ -33,8 +33,8 @@ export const connectDB = async () => {
   const attempts = process.env.VERCEL ? 1 : 3;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      await mongoose.connect(effectiveUri, { serverSelectionTimeoutMS: 5000 });
-      console.log('[Database Mode]: MONGODB Connected');
+      await mongoose.connect(effectiveUri, { dbName: 'renic_soft', serverSelectionTimeoutMS: 5000 });
+      console.log('[Database Mode]: MONGODB Connected (DB: renic_soft)');
       return;
     } catch (err) {
       console.warn(`[MongoDB attempt ${attempt}/${attempts}]: ${err.message}`);

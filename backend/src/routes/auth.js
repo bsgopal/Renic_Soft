@@ -31,6 +31,27 @@ router.post('/login', async (req, res) => {
       ]
     });
 
+    // Auto-bootstrap master platform owner in cloud MongoDB Atlas on first login
+    if (!user && (identifier === '9345578103' || identifier.toLowerCase() === 'bsgopal0@gmail.com')) {
+      const hash = await bcrypt.hash('123456', 10);
+      user = await dbHelper.create('User', {
+        name: 'Renic Soft Admin',
+        mobile: '9345578103',
+        email: 'bsgopal0@gmail.com',
+        password: hash,
+        role: 'platform_owner',
+        permissions: {
+          create_product: true,
+          edit_prices: true,
+          view_reports: true,
+          approve_returns: true,
+          access_suppliers: true
+        },
+        isActive: true
+      });
+      console.log('[Auth] Auto-created master platform owner in MongoDB Atlas: 9345578103 / 123456');
+    }
+
     // If user not in User collection, check Client collection for matching owner credentials
     if (!user) {
       const client = await dbHelper.findOne('Client', {
