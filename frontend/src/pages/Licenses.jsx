@@ -544,12 +544,13 @@ export default function Licenses() {
     try {
       setWizardSubmitting(true);
 
+      const currentApp = apps.find(a => a.appCode === wizardForm.softwareProduct);
+      const appBaseUrl = (currentApp?.frontendUrl || currentApp?.productionFrontendUrl || '').trim();
       const slug = appSlugFor(wizardForm.softwareProduct);
-      const smartUrl = buildCustomerUrl(wizardForm, slug);
+      const smartUrl = appBaseUrl
+        ? `${appBaseUrl.replace(/\/+$/, '')}?tenant=${(wizardForm.customerCode || '').toLowerCase()}`
+        : buildCustomerUrl(wizardForm, slug, currentApp);
 
-      // `portForwarding` is intentionally NOT part of the payload any more: a
-      // customer's target IP / assigned port / connection type are not
-      // configurable — routing is by Host header (config/appPorts.js).
       const effectiveUrl = (wizardForm.fullSaaSDomain && wizardForm.fullSaaSDomain.trim()) || smartUrl;
       const payload = {
         ...wizardForm,
@@ -737,13 +738,15 @@ export default function Licenses() {
   const currentWizardPort = currentWizardApp?.defaultPort || appPortForProduct(wizardForm.softwareProduct);
   const currentWizardBackendPort = backendPortForProduct(wizardForm.softwareProduct);
   const cleanCustomerCode = (wizardForm.customerCode || wizardForm.subdomain || 'client').toLowerCase();
-  const knownFrontendBase = 
+  const dynamicAppFrontendBase = (currentWizardApp?.frontendUrl || currentWizardApp?.productionFrontendUrl || '').trim();
+  const knownFrontendBase = dynamicAppFrontendBase || (
     smartAppSlug === 'pb' ? (import.meta.env.VITE_PAWN_BROKING_URL || 'https://pawn-broking-svr6.vercel.app') :
-    smartAppSlug === 'billing' ? (import.meta.env.VITE_SIMPLE_BILLING_URL || 'https://simplest-billing.vercel.app') :
-    '';
+    smartAppSlug === 'billing' ? (import.meta.env.VITE_SIMPLE_BILLING_URL || 'https://simplebilling-pi.vercel.app') :
+    ''
+  );
   const cloudTenantUrl = wizardForm.fullSaaSDomain?.startsWith('http') && !wizardForm.fullSaaSDomain.includes('renictech.com') && !wizardForm.fullSaaSDomain.includes('lvh.me')
     ? wizardForm.fullSaaSDomain
-    : (knownFrontendBase ? `${knownFrontendBase.replace(/\/+$/, '')}?tenant=${cleanCustomerCode}` : `https://pawn-broking-svr6.vercel.app?tenant=${cleanCustomerCode}`);
+    : (knownFrontendBase ? `${knownFrontendBase.replace(/\/+$/, '')}?tenant=${cleanCustomerCode}` : computedSmartUrl);
 
   const localDevUrl = `http://localhost:${currentWizardPort}`;
   const localLvhUrl = `http://${smartAppSlug}.${cleanCustomerCode}.lvh.me:${currentWizardPort}`;

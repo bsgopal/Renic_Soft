@@ -30,19 +30,10 @@ function cleanLabel(value) {
  * Customer-facing URL. Carries ONLY the public customer id (e.g. RENIC-TX) —
  * never the OAuth clientId/clientSecret, which must stay out of shared links.
  */
-export function buildCustomerUrl(client = {}, appSlug = '') {
+export function buildCustomerUrl(client = {}, appSlug = '', app = null) {
   const slug = cleanLabel(appSlug) || appSlugForProduct(client.softwareProduct);
   const tenant = cleanLabel(client.customerCode || client.subdomain || client.shopSlug);
   if (!tenant) return '';
-
-  // Direct Vercel / Cloud URL Mapping (e.g. VITE_PAWN_BROKING_URL / VITE_SIMPLE_BILLING_URL)
-  const directAppUrls = {
-    billing: import.meta.env.VITE_SIMPLE_BILLING_URL || 'https://simplest-billing.vercel.app',
-    pb: import.meta.env.VITE_PAWN_BROKING_URL || 'https://pawn-broking-svr6.vercel.app',
-    pos: import.meta.env.VITE_TEXTILE_POS_URL,
-    challan: import.meta.env.VITE_DELIVERY_CHALLAN_URL,
-    wa: import.meta.env.VITE_WHATSAPP_AUTOMATION_URL
-  };
 
   if (
     client.fullSaaSDomain &&
@@ -52,6 +43,22 @@ export function buildCustomerUrl(client = {}, appSlug = '') {
   ) {
     return client.fullSaaSDomain;
   }
+
+  // 1. Dynamic Application Catalog Frontend URL
+  const dynamicBase = (app?.frontendUrl || app?.productionFrontendUrl || client.frontendUrl || client.appFrontendUrl || '').trim();
+  if (dynamicBase) {
+    const cleanBase = dynamicBase.replace(/\/+$/, '');
+    return `${cleanBase}?tenant=${tenant}`;
+  }
+
+  // Direct Vercel / Cloud URL Mapping (e.g. VITE_PAWN_BROKING_URL / VITE_SIMPLE_BILLING_URL)
+  const directAppUrls = {
+    billing: import.meta.env.VITE_SIMPLE_BILLING_URL || 'https://simplebilling-pi.vercel.app',
+    pb: import.meta.env.VITE_PAWN_BROKING_URL || 'https://pawn-broking-svr6.vercel.app',
+    pos: import.meta.env.VITE_TEXTILE_POS_URL,
+    challan: import.meta.env.VITE_DELIVERY_CHALLAN_URL,
+    wa: import.meta.env.VITE_WHATSAPP_AUTOMATION_URL
+  };
 
   const directBase = directAppUrls[slug];
   if (directBase) {

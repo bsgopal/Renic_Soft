@@ -649,7 +649,7 @@ router.get('/:idOrCode', async (req, res) => {
 
 router.post('/', protect, authorize('admin', 'platform_owner'), async (req, res) => {
   try {
-    const { name, appCode, urlSlug, category, defaultPort, description, icon, githubUrl, screens = [], features = [], featureMappings = [] } = req.body;
+    const { name, appCode, urlSlug, category, defaultPort, description, icon, githubUrl, frontendUrl, productionFrontendUrl, screens = [], features = [], featureMappings = [] } = req.body;
 
     if (!name || !appCode || !defaultPort) {
       return res.status(400).json({ success: false, message: 'App Name, App Code, and Default Port are required' });
@@ -657,6 +657,7 @@ router.post('/', protect, authorize('admin', 'platform_owner'), async (req, res)
 
     const cleanCode = appCode.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '');
     const cleanSlug = (urlSlug || cleanCode).toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    const cleanFrontendUrl = (frontendUrl || productionFrontendUrl || '').trim();
 
     const existing = await Application.findOne({ appCode: cleanCode });
     if (existing) {
@@ -672,6 +673,8 @@ router.post('/', protect, authorize('admin', 'platform_owner'), async (req, res)
       description: description || '',
       icon: icon || 'Layers',
       githubUrl: githubUrl || '',
+      frontendUrl: cleanFrontendUrl,
+      productionFrontendUrl: cleanFrontendUrl,
       screens,
       features,
       featureMappings,
@@ -697,7 +700,7 @@ router.put('/:id', protect, authorize('admin', 'platform_owner'), async (req, re
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
 
-    const { name, appCode, urlSlug, category, defaultPort, description, icon, githubUrl, localRepoPath, screens, features, featureMappings, solutionModes } = req.body;
+    const { name, appCode, urlSlug, category, defaultPort, description, icon, githubUrl, frontendUrl, productionFrontendUrl, localRepoPath, screens, features, featureMappings, solutionModes } = req.body;
 
     if (appCode) {
       const cleanCode = appCode.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '');
@@ -727,6 +730,11 @@ router.put('/:id', protect, authorize('admin', 'platform_owner'), async (req, re
     if (description !== undefined) app.description = description;
     if (icon) app.icon = icon;
     if (githubUrl !== undefined) app.githubUrl = githubUrl;
+    if (frontendUrl !== undefined || productionFrontendUrl !== undefined) {
+      const fUrl = (frontendUrl !== undefined ? frontendUrl : productionFrontendUrl || '').trim();
+      app.frontendUrl = fUrl;
+      app.productionFrontendUrl = fUrl;
+    }
     if (localRepoPath !== undefined) app.localRepoPath = localRepoPath;
     if (screens) app.screens = screens;
     if (features) app.features = features;

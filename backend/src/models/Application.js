@@ -100,7 +100,9 @@ const applicationSchema = new mongoose.Schema({
   // not a product a tenant subscribes to - so it sets this to false. The
   // customer product dropdown filters on this flag instead of hardcoding a
   // list of appCodes, which would break the moment a new app is registered.
+  frontendUrl: { type: String, default: '', trim: true },
+  productionFrontendUrl: { type: String, default: '', trim: true },
   assignable: { type: Boolean, default: true }
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 export default mongoose.models.Application || mongoose.model('Application', applicationSchema);

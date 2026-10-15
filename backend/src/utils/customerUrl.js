@@ -64,9 +64,16 @@ export function buildCustomerUrl(client = {}, appSlug = '') {
     return client.fullSaaSDomain;
   }
 
-  // Direct Vercel / Cloud URL Mapping (e.g. SIMPLE_BILLING_URL=https://simplest-billing.vercel.app)
+  // 1. Dynamic Application Catalog Frontend URL (Configured directly in Application Hub)
+  const configuredAppUrl = frontendUrlForProduct(client.softwareProduct);
+  if (configuredAppUrl) {
+    const cleanBase = configuredAppUrl.trim().replace(/\/+$/, '');
+    return `${cleanBase}?tenant=${tenant}`;
+  }
+
+  // 2. Direct Vercel / Cloud URL Mapping (e.g. SIMPLE_BILLING_URL=https://simplest-billing.vercel.app)
   const directAppUrls = {
-    billing: process.env.SIMPLE_BILLING_URL || 'https://simplest-billing.vercel.app',
+    billing: process.env.SIMPLE_BILLING_URL || 'https://simplebilling-pi.vercel.app',
     pb: process.env.PAWN_BROKING_URL || 'https://pawn-broking-svr6.vercel.app',
     pos: process.env.TEXTILE_POS_URL,
     challan: process.env.DELIVERY_CHALLAN_URL,
@@ -111,12 +118,13 @@ const FALLBACK_SLUG_BY_PRODUCT = {
 let slugByAppCode = new Map(
   Object.entries(FALLBACK_SLUG_BY_PRODUCT).map(([k, v]) => [k.toUpperCase(), v])
 );
+let frontendUrlByAppCode = new Map();
 
 let lastRefreshAt = 0;
 const REGISTRY_REFRESH_TTL_MS = 60 * 1000;
 
 /**
- * Re-read appCode -> urlSlug from the Applications collection.
+ * Re-read appCode -> urlSlug and frontendUrl from the Applications collection.
  * Returns true when the map was refreshed from the database.
  */
 export async function refreshAppSlugRegistry() {
@@ -127,8 +135,8 @@ export async function refreshAppSlugRegistry() {
     // Lazy import keeps this util free of a static model dependency (it is
     // imported by routes that the Application model also reaches).
     const { default: Application } = await import('../models/Application.js');
-    const apps = await Application.find({ urlSlug: { $exists: true, $ne: '' } })
-      .select('appCode urlSlug')
+    const apps = await Application.find({})
+      .select('appCode urlSlug frontendUrl productionFrontendUrl')
       .lean();
     if (apps.length) {
       slugByAppCode = new Map(
@@ -137,12 +145,22 @@ export async function refreshAppSlugRegistry() {
           String(a.urlSlug || '').trim().toLowerCase()
         ])
       );
+      frontendUrlByAppCode = new Map(
+        apps.map((a) => [
+          String(a.appCode || '').toUpperCase(),
+          String(a.frontendUrl || a.productionFrontendUrl || '').trim()
+        ])
+      );
       return true;
     }
   } catch {
     // Keep the seeded map — never break URL building because of a lookup failure.
   }
   return false;
+}
+
+export function frontendUrlForProduct(softwareProduct = '') {
+  return frontendUrlByAppCode.get(String(softwareProduct || '').trim().toUpperCase()) || '';
 }
 
 /** urlSlug for a softwareProduct, '' when the product is unknown. */

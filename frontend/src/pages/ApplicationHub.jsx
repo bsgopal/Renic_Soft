@@ -13,6 +13,7 @@ const DEFAULT_NEW_APP = {
   urlSlug: '',
   category: 'Retail POS',
   defaultPort: 5180,
+  frontendUrl: '',
   description: '',
   githubUrl: '',
   localRepoPath: '',
@@ -200,6 +201,7 @@ export default function ApplicationHub() {
       urlSlug: app.urlSlug || '',
       category: app.category || 'General',
       defaultPort: app.defaultPort || 5000,
+      frontendUrl: app.frontendUrl || app.productionFrontendUrl || '',
       description: app.description || '',
       githubUrl: app.githubUrl || app.localRepoPath || '',
       localRepoPath: app.localRepoPath || ''
@@ -235,6 +237,7 @@ export default function ApplicationHub() {
         urlSlug: registerForm.urlSlug || registerForm.appCode.toLowerCase(),
         category: registerForm.category,
         defaultPort: Number(registerForm.defaultPort),
+        frontendUrl: (registerForm.frontendUrl || '').trim(),
         description: registerForm.description,
         githubUrl: registerForm.githubUrl || registerForm.localRepoPath
       });
@@ -940,6 +943,22 @@ export default function ApplicationHub() {
               </div>
 
               <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Production Frontend Base URL (Original App URL)
+                </label>
+                <input
+                  type="url"
+                  placeholder="e.g. https://simplebilling-pi.vercel.app or https://pawn-broking-svr6.vercel.app"
+                  value={registerForm.frontendUrl}
+                  onChange={(e) => setRegisterForm({ ...registerForm, frontendUrl: e.target.value })}
+                  className="w-full px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Client launch URLs are auto-generated from this URL: <code className="bg-slate-100 px-1 py-0.5 rounded text-emerald-700 font-mono font-bold">&#123;frontendUrl&#125;?tenant=&#123;customerCode&#125;</code>
+                </p>
+              </div>
+
+              <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Description</label>
                 <textarea
                   rows={2}
@@ -986,8 +1005,13 @@ export default function ApplicationHub() {
                     {selectedApp.appCode}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  Default Port: <b className="text-slate-800 font-mono">:{selectedApp.defaultPort}</b> · Subdomain Slug: <b className="text-slate-800 font-mono">/{selectedApp.urlSlug}</b> · Subscribed Tenants: <b className="text-emerald-700">{assignedClients.length}</b>
+                <p className="text-xs text-slate-500 mt-1 flex items-center flex-wrap gap-2">
+                  <span>Default Port: <b className="text-slate-800 font-mono">:{selectedApp.defaultPort}</b> · Subdomain Slug: <b className="text-slate-800 font-mono">/{selectedApp.urlSlug}</b> · Subscribed Tenants: <b className="text-emerald-700">{assignedClients.length}</b></span>
+                  {(selectedApp.frontendUrl || selectedApp.productionFrontendUrl) && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      🔗 <a href={selectedApp.frontendUrl || selectedApp.productionFrontendUrl} target="_blank" rel="noreferrer" className="underline hover:text-emerald-950 font-bold">{selectedApp.frontendUrl || selectedApp.productionFrontendUrl}</a>
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -1474,6 +1498,22 @@ export default function ApplicationHub() {
                     onChange={(e) => setEditForm({ ...editForm, localRepoPath: e.target.value, githubUrl: e.target.value })}
                     className="w-full px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Production Frontend Base URL (Original App URL)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="e.g. https://simplebilling-pi.vercel.app or https://pawn-broking-svr6.vercel.app"
+                    value={editForm.frontendUrl || ''}
+                    onChange={(e) => setEditForm({ ...editForm, frontendUrl: e.target.value })}
+                    className="w-full px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Client launch URLs are auto-generated from this URL: <code className="bg-slate-100 px-1 py-0.5 rounded text-emerald-700 font-mono font-bold">&#123;frontendUrl&#125;?tenant=&#123;customerCode&#125;</code>
+                  </p>
                 </div>
 
                 <div>
