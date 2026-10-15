@@ -449,6 +449,12 @@ export default function Licenses() {
       ? clientObj.solutionModes
       : (clientObj.solutionMode ? clientObj.solutionMode.split(',').map(s => s.trim()).filter(Boolean) : []);
 
+    const dynamicAppFrontendBase = (targetApp?.frontendUrl || targetApp?.productionFrontendUrl || '').trim();
+    const cleanCustomerCode = (clientObj.customerCode || clientObj.subdomain || 'client').toLowerCase();
+    const isLegacyDomain = !clientObj.fullSaaSDomain || clientObj.fullSaaSDomain.includes('renictech.com') || clientObj.fullSaaSDomain.includes('lvh.me');
+    const autoResolvedLaunchUrl = dynamicAppFrontendBase ? `${dynamicAppFrontendBase.replace(/\/+$/, '')}?tenant=${cleanCustomerCode}` : '';
+    const initialLaunchUrl = (isLegacyDomain && autoResolvedLaunchUrl) ? autoResolvedLaunchUrl : (clientObj.fullSaaSDomain || autoResolvedLaunchUrl);
+
     setWizardForm({
       _id: clientObj._id || clientObj.id,
       name: clientObj.name || '',
@@ -460,7 +466,7 @@ export default function Licenses() {
       customTerminology: clientObj.customTerminology || {},
       subdomain: clientObj.subdomain || '',
       customDomain: clientObj.customDomain || '',
-      fullSaaSDomain: clientObj.fullSaaSDomain || '',
+      fullSaaSDomain: initialLaunchUrl,
       gstNumber: clientObj.gstNumber || '',
       address: clientObj.address || '',
       contact: clientObj.contact || clientObj.pendingOwnerName || '',
@@ -1585,6 +1591,8 @@ export default function Licenses() {
                         } else {
                           appFeatures.forEach(f => { perms[f.key] = true; });
                         }
+                        const appFrontendBase = (targetApp?.frontendUrl || targetApp?.productionFrontendUrl || '').trim();
+                        const dynamicLaunchUrl = appFrontendBase ? `${appFrontendBase.replace(/\/+$/, '')}?tenant=${cleanCustomerCode}` : '';
                         setWizardForm({
                           ...wizardForm,
                           softwareProduct: val,
@@ -1592,7 +1600,8 @@ export default function Licenses() {
                           solutionMode: defaultModes.join(','),
                           businessType: defaultBt?.typeKey || '',
                           customTerminology: defaultBt || {},
-                          screenPermissions: perms
+                          screenPermissions: perms,
+                          ...(dynamicLaunchUrl ? { fullSaaSDomain: dynamicLaunchUrl } : {})
                         });
                       }}
                       className="w-full px-3 py-1.5 text-xs font-bold rounded border border-slate-300 bg-white"
@@ -1632,6 +1641,18 @@ export default function Licenses() {
                         placeholder="https://your-frontend.vercel.app/?tenant=pb01"
                         className="flex-1 font-mono text-[11px] text-emerald-950 font-bold bg-white p-2 rounded border border-emerald-300 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (knownFrontendBase) {
+                            setWizardForm(prev => ({ ...prev, fullSaaSDomain: `${knownFrontendBase.replace(/\/+$/, '')}?tenant=${cleanCustomerCode}` }));
+                          }
+                        }}
+                        className="px-2.5 py-2 text-[11px] font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 rounded-lg shrink-0 border border-emerald-300 cursor-pointer"
+                        title="Auto-generate from Application Frontend URL"
+                      >
+                        ↺ Auto-Sync
+                      </button>
                       <CopyBtn text={wizardForm.fullSaaSDomain || cloudTenantUrl} label="Copy Link" />
                       {wizardForm.ownerMobile && (
                         <a
@@ -1654,7 +1675,8 @@ export default function Licenses() {
                     </div>
                   </div>
 
-                  {/* 2. Localhost & lvh.me Development Loopback */}
+                  {/* 2. Localhost & lvh.me Development Loopback (Commented out per user request) */}
+                  {/*
                   <div className="p-3 bg-lime-50/70 border border-lime-200 rounded-lg text-xs space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-lime-900 flex items-center gap-1.5">
@@ -1716,8 +1738,10 @@ export default function Licenses() {
                       </div>
                     </div>
                   </div>
+                  */}
 
-                  {/* 3. Cloudflare Tunnel Integration */}
+                  {/* 3. Cloudflare Tunnel Integration (Commented out per user request) */}
+                  {/*
                   <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-lg text-xs space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-amber-900 flex items-center gap-1.5">
@@ -1733,6 +1757,7 @@ export default function Licenses() {
                       <CopyBtn text={cloudflareTunnelCmd} label="Copy Command" />
                     </div>
                   </div>
+                  */}
                 </div>
               </div>
 
