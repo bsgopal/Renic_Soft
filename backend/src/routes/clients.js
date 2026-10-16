@@ -805,6 +805,36 @@ router.put('/:id', protect, authorize('platform_owner', 'admin'), async (req, re
     try {
       const targetDbName = client.databaseName || `renic_tenant_${(client.customerCode || '').toLowerCase()}`;
       const tenantDb = mongoose.connection.useDb(targetDbName, { useCache: true });
+
+      // Automatically provision tenant database if collections have not been initialized yet
+      const settingsCount = await tenantDb.collection('tenant_settings').countDocuments().catch(() => 0);
+      if (settingsCount === 0) {
+        console.log(`[Tenant Provisioning] Tenant DB '${targetDbName}' not yet provisioned. Auto-provisioning now...`);
+        try {
+          await provisionTenantDatabase({
+            customerCode: client.customerCode,
+            shopName: client.name,
+            ownerEmail: client.pendingOwnerEmail,
+            ownerMobile: client.pendingOwnerMobile,
+            ownerPassword: '',
+            softwareProduct: client.softwareProduct,
+            clientId: client.clientId,
+            planTier: client.planTier,
+            isTrial: Boolean(client.isTrial),
+            databaseName: targetDbName,
+            solutionMode: client.solutionMode,
+            solutionModes: client.solutionModes,
+            businessType: client.businessType,
+            customTerminology: client.customTerminology,
+            screenPermissions: client.screenPermissions,
+            whatsappSenderMode: (client.whatsappSenderMode || 'DOCKER').toUpperCase(),
+            dockerThrottleSeconds: Number(client.dockerThrottleSeconds) || 6
+          });
+        } catch (provErr) {
+          console.warn('[Tenant Auto-Provisioning on Update Error]:', provErr.message);
+        }
+      }
+
       await tenantDb.collection('clients').updateMany(
         {},
         {
