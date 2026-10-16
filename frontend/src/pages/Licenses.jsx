@@ -86,8 +86,11 @@ const DEFAULT_SHOP = {
     enableBlacklistShield: true,
     allowCustomPrintTemplates: true
   },
-  whatsappSenderMode: 'META',
-  dockerThrottleSeconds: 6
+  whatsappSenderMode: 'DOCKER',
+  dockerThrottleSeconds: 6,
+  wahaApiUrl: '',
+  wahaApiKey: '',
+  wahaSessionName: 'default'
 };
 
 const WIZARD_SECTIONS = [
@@ -234,6 +237,11 @@ export default function Licenses() {
   // The client secret is masked by default in the handover modal; only the
   // operator's explicit Reveal click unmasks it.
   const [revealSecret, setRevealSecret] = useState(false);
+
+  // WAHA Infrastructure Diagnostics State
+  const [wahaProbing, setWahaProbing] = useState(false);
+  const [wahaProbeResult, setWahaProbeResult] = useState(null);
+  const [showWahaApiKey, setShowWahaApiKey] = useState(false);
 
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -416,6 +424,8 @@ export default function Licenses() {
     setWizardMode('create');
     setSelectedClient(null);
     setPreflightResults(null);
+    setWahaProbeResult(null);
+    setShowWahaApiKey(false);
     setActiveTabSection(0);
     setWizardForm({
       ...DEFAULT_SHOP,
@@ -438,6 +448,8 @@ export default function Licenses() {
     setSelectedClient(clientObj);
     setWizardMode('edit');
     setPreflightResults(null);
+    setWahaProbeResult(null);
+    setShowWahaApiKey(false);
     setActiveTabSection(0);
 
     const targetApp = apps.find(a => a.appCode === clientObj.softwareProduct);
@@ -494,8 +506,11 @@ export default function Licenses() {
       screenPermissions: mergedPerms,
       branchConfig: clientObj.branchConfig || DEFAULT_SHOP.branchConfig,
       featurePermissions: { ...DEFAULT_SHOP.featurePermissions, ...(clientObj.featurePermissions || {}) },
-      whatsappSenderMode: clientObj.whatsappSenderMode || 'META',
-      dockerThrottleSeconds: clientObj.dockerThrottleSeconds || 6
+      whatsappSenderMode: clientObj.whatsappSenderMode || 'DOCKER',
+      dockerThrottleSeconds: clientObj.dockerThrottleSeconds || 6,
+      wahaApiUrl: clientObj.wahaApiUrl || '',
+      wahaApiKey: clientObj.wahaApiKey || '',
+      wahaSessionName: clientObj.wahaSessionName || 'default'
     });
 
     setWizardOpen(true);
@@ -510,6 +525,8 @@ export default function Licenses() {
         shopSlug: wizardForm.subdomain || wizardForm.customerCode,
         softwareProduct: wizardForm.softwareProduct,
         whatsappSenderMode: wizardForm.whatsappSenderMode,
+        wahaApiUrl: wizardForm.wahaApiUrl,
+        wahaApiKey: wizardForm.wahaApiKey,
         excludeId: wizardMode === 'edit' ? (wizardForm._id || selectedClient?._id) : undefined
       });
       setPreflightResults(res.data);
@@ -541,6 +558,28 @@ export default function Licenses() {
       showSnackbar(`❌ Diagnostic probe failed: ${errMessage}`, 'error');
     } finally {
       setPreflightLoading(false);
+    }
+  };
+
+  // Direct WAHA Infrastructure Probe
+  const handleProbeWaha = async () => {
+    try {
+      setWahaProbing(true);
+      setWahaProbeResult(null);
+      const res = await api.post('/licenses/probe-waha', {
+        wahaApiUrl: wizardForm.wahaApiUrl,
+        wahaApiKey: wizardForm.wahaApiKey
+      });
+      setWahaProbeResult(res.data);
+      if (res.data.success) {
+        showSnackbar(`✓ WAHA Online! (${res.data.latency}ms, ${res.data.sessions?.length || 0} active sessions)`, 'success');
+      }
+    } catch (err) {
+      const errData = err.response?.data || { message: err.message };
+      setWahaProbeResult({ success: false, ...errData });
+      showSnackbar(`❌ WAHA Connection Probe: ${errData.message || 'Failed to connect'}`, 'error');
+    } finally {
+      setWahaProbing(false);
     }
   };
 
@@ -2315,6 +2354,122 @@ export default function Licenses() {
                         Pause duration between each outgoing bulk broadcast message to prevent WhatsApp bans.
                       </span>
                     </div>
+
+                    {/* WAHA Engine Controls for DOCKER Mode */}
+                    {wizardForm.whatsappSenderMode === 'DOCKER' && (
+                      <div className="col-span-1 sm:col-span-2 mt-2 p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/90 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-slate-200">
+                          <div>
+                            <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              🐳 WAHA Instance &amp; API Configuration
+                              <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">Master HQ Only</span>
+                            </span>
+                            <p className="text-[10px] text-slate-500">Centrally managed infrastructure credentials. Hidden from tenant client interface.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleProbeWaha}
+                            disabled={wahaProbing}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition"
+                          >
+                            <Icon name="refresh" className={`w-3 h-3 ${wahaProbing ? 'animate-spin text-emerald-400' : ''}`} />
+                            {wahaProbing ? 'Probing...' : 'Test Connection'}
+                          </button>
+                        </div>
+
+                        {/* Probe status badge if tested */}
+                        {wahaProbeResult && (
+                          <div className={`p-2.5 rounded-lg text-xs flex items-center justify-between border ${
+                            wahaProbeResult.success
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                              : 'bg-rose-50 border-rose-200 text-rose-900'
+                          }`}>
+                            <span className="font-semibold flex items-center gap-1.5">
+                              {wahaProbeResult.success ? '🟢' : '🔴'} {wahaProbeResult.message}
+                            </span>
+                            {wahaProbeResult.latency && (
+                              <span className="text-[10px] opacity-75 font-mono">{wahaProbeResult.latency}ms</span>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                          {/* WAHA Server URL */}
+                          <div className="sm:col-span-2">
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-xs font-bold text-slate-700">WAHA Server Base URL</label>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-slate-400">Presets:</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setWizardForm(prev => ({ ...prev, wahaApiUrl: 'https://devlikeaprowaha-production-661c.up.railway.app' }))}
+                                  className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200 transition"
+                                >
+                                  Railway Cloud
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setWizardForm(prev => ({ ...prev, wahaApiUrl: 'http://localhost:3000' }))}
+                                  className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold border border-slate-300 transition"
+                                >
+                                  Localhost:3000
+                                </button>
+                              </div>
+                            </div>
+                            <input
+                              type="text"
+                              value={wizardForm.wahaApiUrl || ''}
+                              onChange={(e) => setWizardForm({ ...wizardForm, wahaApiUrl: e.target.value })}
+                              placeholder="e.g. https://devlikeaprowaha-production-661c.up.railway.app or http://localhost:3000"
+                              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 bg-white focus:ring-2 focus:ring-lime-400 focus:border-lime-500"
+                            />
+                          </div>
+
+                          {/* WAHA API Key */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-xs font-bold text-slate-700">WAHA API Key (<code className="font-mono text-[10px]">X-Api-Key</code>)</label>
+                              <button
+                                type="button"
+                                onClick={() => setWizardForm(prev => ({ ...prev, wahaApiKey: '6968d9f6a8c0471587939565fea81e5e' }))}
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold border border-emerald-200 transition"
+                              >
+                                Default Key
+                              </button>
+                            </div>
+                            <div className="relative">
+                              <input
+                                type={showWahaApiKey ? 'text' : 'password'}
+                                value={wizardForm.wahaApiKey || ''}
+                                onChange={(e) => setWizardForm({ ...wizardForm, wahaApiKey: e.target.value })}
+                                placeholder="Paste WAHA_API_KEY"
+                                className="w-full border border-slate-300 rounded-lg px-3 py-2 pr-16 text-xs font-mono text-slate-800 bg-white focus:ring-2 focus:ring-lime-400 focus:border-lime-500"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowWahaApiKey(!showWahaApiKey)}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-slate-500 hover:text-slate-800 px-1.5 py-0.5 bg-slate-100 rounded border border-slate-200"
+                              >
+                                {showWahaApiKey ? 'Hide' : 'Show'}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* WAHA Session Name */}
+                          <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1">WAHA Session Name</label>
+                            <input
+                              type="text"
+                              value={wizardForm.wahaSessionName || 'default'}
+                              onChange={(e) => setWizardForm({ ...wizardForm, wahaSessionName: e.target.value })}
+                              placeholder="default"
+                              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 bg-white focus:ring-2 focus:ring-lime-400 focus:border-lime-500"
+                            />
+                            <span className="text-[10px] text-slate-400 block mt-1">Default session name is <code className="text-slate-600">default</code></span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

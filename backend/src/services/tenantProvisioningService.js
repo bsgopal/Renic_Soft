@@ -23,7 +23,10 @@ export async function provisionTenantDatabase({
   customTerminology = {},
   screenPermissions = {},
   whatsappSenderMode = 'DOCKER',
-  dockerThrottleSeconds = 6
+  dockerThrottleSeconds = 6,
+  wahaApiUrl = '',
+  wahaApiKey = '',
+  wahaSessionName = 'default'
 }) {
   if (!customerCode) {
     throw new Error('customerCode is required to provision tenant database');
@@ -72,6 +75,9 @@ export async function provisionTenantDatabase({
           screenPermissions: screenPermissions || {},
           whatsappSenderMode: (whatsappSenderMode || 'DOCKER').toUpperCase(),
           dockerThrottleSeconds: Number(dockerThrottleSeconds) || 6,
+          wahaApiUrl: (wahaApiUrl || '').trim(),
+          wahaApiKey: (wahaApiKey || '').trim(),
+          wahaSessionName: (wahaSessionName || 'default').trim(),
           isTrial: Boolean(isTrial),
           provisionedAt: new Date(),
           status: 'ACTIVE'
@@ -179,6 +185,9 @@ export async function provisionTenantDatabase({
           whatsappSenderMode: (whatsappSenderMode || 'DOCKER').toUpperCase(),
           metaApiEnabled: (whatsappSenderMode || 'DOCKER').toUpperCase() === 'META',
           dockerThrottleSeconds: Number(dockerThrottleSeconds) || 6,
+          wahaApiUrl: (wahaApiUrl || '').trim(),
+          wahaApiKey: (wahaApiKey || '').trim(),
+          wahaSessionName: (wahaSessionName || 'default').trim(),
           oauthConfig: {
             clientId: '',
             clientSecret: '',

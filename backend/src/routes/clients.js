@@ -40,6 +40,9 @@ const broadcastOtaUpdateToTenant = async (client) => {
       clientSecretHash: client.clientSecretHash,
       whatsappSenderMode: client.whatsappSenderMode || 'DOCKER',
       dockerThrottleSeconds: client.dockerThrottleSeconds || 6,
+      wahaApiUrl: client.wahaApiUrl || '',
+      wahaApiKey: client.wahaApiKey || '',
+      wahaSessionName: client.wahaSessionName || 'default',
       businessType: client.businessType || '',
       solutionMode: client.solutionMode || '',
       solutionModes: client.solutionModes || [],
@@ -250,7 +253,7 @@ router.get('/', protect, authorize('platform_owner'), async (req, res) => {
 // @route   POST /api/licenses/preflight-check
 router.post('/preflight-check', protect, authorize('platform_owner', 'admin'), async (req, res) => {
   try {
-    const { customerCode, shopSlug, softwareProduct, whatsappSenderMode, excludeId } = req.body;
+    const { customerCode, shopSlug, softwareProduct, whatsappSenderMode, wahaApiUrl, wahaApiKey, excludeId } = req.body;
     const checks = {
       subdomainUnique: true,
       subdomainMessage: '',
@@ -348,13 +351,20 @@ router.post('/preflight-check', protect, authorize('platform_owner', 'admin'), a
 
     // 4. Check WAHA if WhatsApp is in Docker mode
     if (softwareProduct === 'WA_INSTA_AUTOMATION' && whatsappSenderMode === 'DOCKER') {
+      const probeTarget = (wahaApiUrl || 'http://127.0.0.1:3000').trim().replace(/\/+$/, '');
+      const headers = {};
+      if (wahaApiKey && wahaApiKey.trim()) headers['X-Api-Key'] = wahaApiKey.trim();
       try {
-        await axios.get('http://127.0.0.1:3000/api/sessions', { timeout: 1500 });
+        await axios.get(`${probeTarget}/api/sessions`, { headers, timeout: 2500 });
         checks.wahaReady = true;
-        checks.wahaMessage = 'Docker WAHA online on port 3000';
+        checks.wahaMessage = `Docker WAHA online on ${probeTarget}`;
       } catch (wErr) {
         checks.wahaReady = false;
-        checks.wahaMessage = 'Docker WAHA unreachable on port 3000';
+        if (wErr.response?.status === 401) {
+          checks.wahaMessage = `Docker WAHA on ${probeTarget} returned 401 Unauthorized (Invalid API Key)`;
+        } else {
+          checks.wahaMessage = `Docker WAHA unreachable on ${probeTarget}`;
+        }
       }
     }
 
@@ -376,6 +386,46 @@ router.post('/preflight-check', protect, authorize('platform_owner', 'admin'), a
   } catch (err) {
     console.error('Preflight check error:', err);
     res.status(500).json({ success: false, passed: false, ready: false, message: err.message });
+  }
+});
+
+// @desc    Live probe WAHA instance connectivity & API key
+// @route   POST /api/licenses/probe-waha (and /api/clients/probe-waha)
+router.post('/probe-waha', protect, authorize('platform_owner', 'admin'), async (req, res) => {
+  const { wahaApiUrl, wahaApiKey } = req.body;
+  const baseUrl = (wahaApiUrl || 'http://127.0.0.1:3000').trim().replace(/\/+$/, '');
+  const headers = {};
+  if (wahaApiKey && wahaApiKey.trim()) {
+    headers['X-Api-Key'] = wahaApiKey.trim();
+  }
+  const startTime = Date.now();
+  try {
+    const response = await axios.get(`${baseUrl}/api/sessions`, { headers, timeout: 5000 });
+    const latency = Date.now() - startTime;
+    return res.json({
+      success: true,
+      status: response.status,
+      latency,
+      message: `WAHA server online (${Array.isArray(response.data) ? response.data.length : 0} session(s) active, ${latency}ms)`,
+      sessions: response.data
+    });
+  } catch (err) {
+    const latency = Date.now() - startTime;
+    const status = err.response?.status;
+    let message = err.message;
+    if (status === 401) {
+      message = 'WAHA Authentication Failed: 401 Unauthorized. Ensure your API Key matches WAHA_API_KEY.';
+    } else if (err.code === 'ECONNREFUSED' || err.message?.includes('ECONNREFUSED')) {
+      message = `Connection refused at ${baseUrl}. Ensure the WAHA Docker container or Railway service is running.`;
+    } else if (err.code === 'ETIMEDOUT' || err.message?.includes('timeout')) {
+      message = `Connection timed out reaching ${baseUrl}.`;
+    }
+    return res.status(status || 500).json({
+      success: false,
+      status,
+      latency,
+      message
+    });
   }
 });
 
@@ -530,6 +580,9 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
       oauthEnforced: req.body.oauthEnforced !== undefined ? Boolean(req.body.oauthEnforced) : true,
       whatsappSenderMode: (req.body.whatsappSenderMode || 'DOCKER').toUpperCase(),
       dockerThrottleSeconds: Number(req.body.dockerThrottleSeconds) || 6,
+      wahaApiUrl: (req.body.wahaApiUrl || '').trim(),
+      wahaApiKey: (req.body.wahaApiKey || '').trim(),
+      wahaSessionName: (req.body.wahaSessionName || 'default').trim(),
       portForwarding: {
         publicWebUrl: buildCustomerUrlForProduct({ customerCode: code }, softwareProduct),
         status: 'online',
@@ -568,7 +621,10 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
         customTerminology: req.body.customTerminology || {},
         screenPermissions: screenPermissions || {},
         whatsappSenderMode: (req.body.whatsappSenderMode || 'DOCKER').toUpperCase(),
-        dockerThrottleSeconds: Number(req.body.dockerThrottleSeconds) || 6
+        dockerThrottleSeconds: Number(req.body.dockerThrottleSeconds) || 6,
+        wahaApiUrl: (req.body.wahaApiUrl || '').trim(),
+        wahaApiKey: (req.body.wahaApiKey || '').trim(),
+        wahaSessionName: (req.body.wahaSessionName || 'default').trim()
       });
     } catch (provErr) {
       console.error('[Tenant Auto-Provisioning Error]:', provErr);
@@ -791,6 +847,9 @@ router.put('/:id', protect, authorize('platform_owner', 'admin'), async (req, re
     if (req.body.customTerminology !== undefined) client.customTerminology = req.body.customTerminology;
     if (req.body.whatsappSenderMode) client.whatsappSenderMode = req.body.whatsappSenderMode;
     if (req.body.dockerThrottleSeconds !== undefined) client.dockerThrottleSeconds = Number(req.body.dockerThrottleSeconds) || 6;
+    if (req.body.wahaApiUrl !== undefined) client.wahaApiUrl = (req.body.wahaApiUrl || '').trim();
+    if (req.body.wahaApiKey !== undefined) client.wahaApiKey = (req.body.wahaApiKey || '').trim();
+    if (req.body.wahaSessionName !== undefined) client.wahaSessionName = (req.body.wahaSessionName || 'default').trim();
     if (req.body.oauthEnforced !== undefined) client.oauthEnforced = Boolean(req.body.oauthEnforced);
     if (req.body.clientId && req.body.clientId.trim()) client.clientId = req.body.clientId.trim();
     if (req.body.clientSecret && req.body.clientSecret.trim()) {
@@ -828,7 +887,10 @@ router.put('/:id', protect, authorize('platform_owner', 'admin'), async (req, re
             customTerminology: client.customTerminology,
             screenPermissions: client.screenPermissions,
             whatsappSenderMode: (client.whatsappSenderMode || 'DOCKER').toUpperCase(),
-            dockerThrottleSeconds: Number(client.dockerThrottleSeconds) || 6
+            dockerThrottleSeconds: Number(client.dockerThrottleSeconds) || 6,
+            wahaApiUrl: client.wahaApiUrl || '',
+            wahaApiKey: client.wahaApiKey || '',
+            wahaSessionName: client.wahaSessionName || 'default'
           });
         } catch (provErr) {
           console.warn('[Tenant Auto-Provisioning on Update Error]:', provErr.message);
@@ -849,7 +911,10 @@ router.put('/:id', protect, authorize('platform_owner', 'admin'), async (req, re
             licenseStatus: client.licenseStatus,
             licenseEnd: client.licenseEnd,
             whatsappSenderMode: (client.whatsappSenderMode || 'DOCKER').toUpperCase(),
-            dockerThrottleSeconds: Number(client.dockerThrottleSeconds) || 6
+            dockerThrottleSeconds: Number(client.dockerThrottleSeconds) || 6,
+            wahaApiUrl: client.wahaApiUrl || '',
+            wahaApiKey: client.wahaApiKey || '',
+            wahaSessionName: client.wahaSessionName || 'default'
           }
         }
       );
@@ -862,6 +927,9 @@ router.put('/:id', protect, authorize('platform_owner', 'admin'), async (req, re
             whatsappSenderMode: (client.whatsappSenderMode || 'DOCKER').toUpperCase(),
             metaApiEnabled: (client.whatsappSenderMode || 'DOCKER').toUpperCase() === 'META',
             dockerThrottleSeconds: Number(client.dockerThrottleSeconds) || 6,
+            wahaApiUrl: client.wahaApiUrl || '',
+            wahaApiKey: client.wahaApiKey || '',
+            wahaSessionName: client.wahaSessionName || 'default',
             businessType: client.businessType || '',
             solutionMode: client.solutionMode || '',
             solutionModes: client.solutionModes || [],
@@ -880,7 +948,10 @@ router.put('/:id', protect, authorize('platform_owner', 'admin'), async (req, re
             screenPermissions: client.screenPermissions,
             planTier: client.planTier,
             whatsappSenderMode: (client.whatsappSenderMode || 'DOCKER').toUpperCase(),
-            dockerThrottleSeconds: Number(client.dockerThrottleSeconds) || 6
+            dockerThrottleSeconds: Number(client.dockerThrottleSeconds) || 6,
+            wahaApiUrl: client.wahaApiUrl || '',
+            wahaApiKey: client.wahaApiKey || '',
+            wahaSessionName: client.wahaSessionName || 'default'
           }
         }
       );

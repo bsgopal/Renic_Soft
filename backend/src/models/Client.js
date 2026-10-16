@@ -90,6 +90,9 @@ const clientSchema = new mongoose.Schema({
     type: Number,
     default: 6
   },
+  wahaApiUrl: { type: String, default: '' },
+  wahaApiKey: { type: String, default: '' },
+  wahaSessionName: { type: String, default: 'default' },
 
   // Subdomain & Network Routing (Zero Port Exposure)
   subdomain: { type: String, default: '', lowercase: true, trim: true },
