@@ -34,7 +34,7 @@ export default function InvoiceDoc({
     email: company?.email || 'info@renictechnology.com',
     website: company?.website || 'www.renictechnology.com',
     address: company?.address || '123 Business Street, Suite 100, Tamil Nadu, India',
-    gstin: company?.gstNumber || company?.gstin || '33XXXXX0000X0XX',
+    gstin: company?.gstNumber || company?.gstin || company?.gst || '',
     logoUrl: company?.logoUrl || logo
   };
 

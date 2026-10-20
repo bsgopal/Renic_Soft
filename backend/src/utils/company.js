@@ -19,7 +19,7 @@ export const getCompany = async () => {
     phone: cfg.phone || process.env.COMPANY_PHONE || process.env.OWNER_MOBILE || '+91 93455 78103',
     email: cfg.email || process.env.COMPANY_EMAIL || process.env.OWNER_EMAIL || 'contact@renic.store',
     website: cfg.website || 'https://renictech.com',
-    gst: cfg.gst || process.env.COMPANY_GSTIN || '29AAAAA0000A1Z5',
+    gst: cfg.gst || process.env.COMPANY_GSTIN || '',
     currency: cfg.currency || 'INR',
     bankName: cfg.bankName || 'HDFC Bank Ltd',
     accountNumber: cfg.accountNumber || '50200088991122',
