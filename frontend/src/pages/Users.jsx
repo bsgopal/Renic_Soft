@@ -307,246 +307,209 @@ export default function Users() {
   }
 
   return (
-    <div className="w-full min-w-0 space-y-4 pb-24">
-      {/* ── TOP HEADER (CLEAN & ALIGNED) ── */}
-      <div className="w-full bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-[#0f172a] text-[#84cc16] flex items-center gap-1.5 shadow-xs">
-              <Icon name="shield" className="w-3 h-3 text-[#84cc16]" />
-              Super Admin Authority
-            </span>
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-50 border border-amber-200/80 rounded-full text-amber-900 text-[11px] font-bold">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <span>Primary Super Admin: 9345578103</span>
-            </div>
+    <div className="w-full min-w-0 space-y-2 pb-12">
+      {/* ── 1. ULTRA-COMPACT ENTERPRISE HEADER (NO WASTED VERTICAL SPACE) ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200/90 shadow-2xs">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#84cc16] flex items-center justify-center font-bold flex-shrink-0">
+            <Icon name="users" className="w-3.5 h-3.5" />
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            User Access &amp; Permission Console
-          </h1>
-          <p className="text-xs text-slate-500 font-medium max-w-2xl">
-            Only Super Admin can create, edit, or delete accounts, assign screen visibility, and grant application client-creation authority.
-          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-sm font-black text-slate-900 tracking-tight">
+              User &amp; Access Directory
+            </h1>
+            <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-[#0f172a] text-[#84cc16]">
+              Super Admin Console
+            </span>
+            <span className="text-[10px] font-mono text-slate-500 hidden md:inline">
+              • Master: <strong className="text-slate-700">9345578103</strong>
+            </span>
+          </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 flex-wrap flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             onClick={() => openCreateModal('INTERNAL_USER')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#84cc16] hover:bg-[#72b012] text-[#0f172a] font-black rounded-xl text-xs transition shadow-xs hover:shadow-sm active:scale-98"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#84cc16] hover:bg-[#72b012] text-[#0f172a] font-bold text-xs rounded-lg shadow-2xs transition active:scale-98"
             title="Create internal Renic Soft staff / admin"
           >
-            <Icon name="plus" className="w-4 h-4 stroke-[2.5]" />
+            <Icon name="plus" className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Add Renic Soft User</span>
           </button>
 
           <button
             onClick={() => openCreateModal('EXTERNAL_CLIENT')}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition shadow-xs hover:shadow-sm active:scale-98"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0f172a] hover:bg-slate-800 text-white font-bold text-xs rounded-lg shadow-2xs transition active:scale-98"
             title="Create client account for an external application"
           >
-            <Icon name="store" className="w-4 h-4 text-sky-400" />
+            <Icon name="store" className="w-3.5 h-3.5 text-sky-400" />
             <span>Add External Client</span>
           </button>
         </div>
       </div>
 
-      {/* ── METRIC TILES (EXECUTIVE 5-COL STAT CARDS) ── */}
-      <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs hover:border-slate-300 transition">
-          <div className="flex items-center justify-between text-slate-400 mb-1">
-            <span className="text-[10px] font-black uppercase tracking-wider">Total Accounts</span>
-            <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
-              <Icon name="users" className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">{stats.total}</div>
-          <span className="text-[10px] text-slate-400 font-medium">All registered identities</span>
+      {/* ── 2. COMPACT INLINE KPI STRIP (HEIGHT: ~36px) ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div className="bg-white px-3 py-1.5 rounded-lg border border-slate-200/80 shadow-2xs flex items-center justify-between">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total</span>
+          <span className="text-sm font-black text-slate-900 font-mono">{stats.total}</span>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs hover:border-amber-300 transition">
-          <div className="flex items-center justify-between text-amber-600 mb-1">
-            <span className="text-[10px] font-black uppercase tracking-wider">Super Admins</span>
-            <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
-              <Icon name="shield" className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-amber-900">{stats.superAdmins}</div>
-          <span className="text-[10px] text-amber-700 font-medium">Master authority</span>
+        <div className="bg-white px-3 py-1.5 rounded-lg border border-amber-200/80 shadow-2xs flex items-center justify-between">
+          <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Super Admin</span>
+          <span className="text-sm font-black text-amber-900 font-mono">{stats.superAdmins}</span>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs hover:border-emerald-300 transition">
-          <div className="flex items-center justify-between text-emerald-600 mb-1">
-            <span className="text-[10px] font-black uppercase tracking-wider">Renic Soft Admins</span>
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
-              <Icon name="key" className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-emerald-900">{stats.internalAdmins}</div>
-          <span className="text-[10px] text-emerald-700 font-medium">Scoped app authorities</span>
+        <div className="bg-white px-3 py-1.5 rounded-lg border border-emerald-200/80 shadow-2xs flex items-center justify-between">
+          <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Staff Admins</span>
+          <span className="text-sm font-black text-emerald-900 font-mono">{stats.internalAdmins}</span>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs hover:border-sky-300 transition">
-          <div className="flex items-center justify-between text-sky-600 mb-1">
-            <span className="text-[10px] font-black uppercase tracking-wider">External Clients</span>
-            <div className="w-7 h-7 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center">
-              <Icon name="store" className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-sky-900">{stats.externalClients}</div>
-          <span className="text-[10px] text-sky-700 font-medium">App tenants</span>
+        <div className="bg-white px-3 py-1.5 rounded-lg border border-sky-200/80 shadow-2xs flex items-center justify-between">
+          <span className="text-[10px] font-bold text-sky-700 uppercase tracking-wider">App Clients</span>
+          <span className="text-sm font-black text-sky-900 font-mono">{stats.externalClients}</span>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs hover:border-lime-300 transition col-span-2 sm:col-span-1">
-          <div className="flex items-center justify-between text-[#65a30d] mb-1">
-            <span className="text-[10px] font-black uppercase tracking-wider">Active Logins</span>
-            <div className="w-7 h-7 rounded-lg bg-lime-50 text-[#65a30d] flex items-center justify-center">
-              <Icon name="check" className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">{stats.active} <span className="text-xs text-slate-400 font-normal">/ {stats.total}</span></div>
-          <span className="text-[10px] text-emerald-600 font-medium">Enabled accounts</span>
+        <div className="bg-white px-3 py-1.5 rounded-lg border border-lime-200/80 shadow-2xs flex items-center justify-between col-span-2 sm:col-span-1">
+          <span className="text-[10px] font-bold text-[#65a30d] uppercase tracking-wider">Active</span>
+          <span className="text-sm font-black text-slate-900 font-mono">
+            {stats.active} <span className="text-[10px] font-normal text-slate-400">/{stats.total}</span>
+          </span>
         </div>
       </div>
 
-      {/* ── UNIFIED FILTER & SEARCH BAR ── */}
-      <div className="w-full bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
-        {/* Row 1: Segmented Tabs & Search */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Segmented Category Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl overflow-x-auto no-scrollbar">
-            {[
-              { id: 'ALL', label: 'All Accounts', count: stats.total },
-              { id: 'INTERNAL_USERS', label: 'Renic Soft Staff (Admins)', count: stats.superAdmins + stats.internalAdmins },
-              { id: 'EXTERNAL_CLIENTS', label: 'External App Clients', count: stats.externalClients }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setCategoryTab(tab.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
-                  categoryTab === tab.id
-                    ? 'bg-white text-slate-900 shadow-xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span>{tab.label}</span>
-                <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${
-                  categoryTab === tab.id ? 'bg-[#84cc16] text-[#0f172a]' : 'bg-slate-200/80 text-slate-600'
-                }`}>
-                  {tab.count}
-                </span>
-              </button>
-            ))}
-          </div>
+      {/* ── 3. UNIFIED SINGLE-ROW TOOLBAR (TABS + SEARCH + FILTERS IN ONE LINE) ── */}
+      <div className="bg-white p-2 rounded-xl border border-slate-200/90 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-2 text-xs">
+        {/* Left: Segmented Control Tabs */}
+        <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg overflow-x-auto no-scrollbar flex-shrink-0">
+          {[
+            { id: 'ALL', label: 'All Accounts', count: stats.total },
+            { id: 'INTERNAL_USERS', label: 'Staff Admins', count: stats.superAdmins + stats.internalAdmins },
+            { id: 'EXTERNAL_CLIENTS', label: 'App Clients', count: stats.externalClients }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setCategoryTab(tab.id)}
+              className={`px-2.5 py-1 rounded-md text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+                categoryTab === tab.id
+                  ? 'bg-white text-slate-900 shadow-2xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${
+                categoryTab === tab.id ? 'bg-[#84cc16] text-[#0f172a]' : 'bg-slate-200/80 text-slate-600'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
 
-          {/* Search Input */}
-          <div className="relative w-full md:w-80">
-            <Icon name="search" className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* Right: Search + Compact Filters */}
+        <div className="flex items-center gap-1.5 flex-wrap flex-1 justify-end">
+          {/* Compact Search */}
+          <div className="relative w-full sm:w-44">
+            <Icon name="search" className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by name, mobile, email..."
+              placeholder="Search user / mobile..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-hidden focus:border-[#84cc16] focus:bg-white"
+              className="w-full pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-hidden focus:border-[#84cc16] focus:bg-white"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
               >
                 ✕
               </button>
             )}
           </div>
-        </div>
 
-        {/* Row 2: Secondary Dropdown Filters */}
-        <div className="flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-slate-100 text-xs">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-slate-400 text-[10px] uppercase tracking-wider">Filter:</span>
+          {/* Role Filter */}
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16]"
+          >
+            <option value="ALL">All Roles</option>
+            <option value="SUPER_ADMIN">Super Admin</option>
+            <option value="ADMIN">Staff Admin</option>
+            <option value="CLIENT">Client</option>
+          </select>
 
-            {/* Role Filter */}
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16]"
+          {/* App Filter */}
+          <select
+            value={appFilter}
+            onChange={(e) => setAppFilter(e.target.value)}
+            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16] max-w-[130px] truncate"
+          >
+            <option value="ALL">All Apps</option>
+            {applications.map((app) => (
+              <option key={app.appCode} value={app.appCode}>
+                {app.name}
+              </option>
+            ))}
+          </select>
+
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16]"
+          >
+            <option value="ALL">All Status</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+
+          {(roleFilter !== 'ALL' || appFilter !== 'ALL' || statusFilter !== 'ALL' || search) && (
+            <button
+              onClick={() => {
+                setRoleFilter('ALL');
+                setAppFilter('ALL');
+                setStatusFilter('ALL');
+                setSearch('');
+              }}
+              className="text-[11px] font-bold text-rose-600 hover:text-rose-700 underline px-1"
             >
-              <option value="ALL">All Roles</option>
-              <option value="SUPER_ADMIN">Super Admin Only</option>
-              <option value="ADMIN">Renic Soft Admin Only</option>
-              <option value="CLIENT">Client Only</option>
-            </select>
+              Reset
+            </button>
+          )}
 
-            {/* Application Filter */}
-            <select
-              value={appFilter}
-              onChange={(e) => setAppFilter(e.target.value)}
-              className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16]"
-            >
-              <option value="ALL">All Applications</option>
-              {applications.map((app) => (
-                <option key={app.appCode} value={app.appCode}>
-                  {app.name}
-                </option>
-              ))}
-            </select>
-
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16]"
-            >
-              <option value="ALL">All Status</option>
-              <option value="ACTIVE">Active Only</option>
-              <option value="INACTIVE">Deactivated Only</option>
-            </select>
-
-            {(roleFilter !== 'ALL' || appFilter !== 'ALL' || statusFilter !== 'ALL' || search) && (
-              <button
-                onClick={() => {
-                  setRoleFilter('ALL');
-                  setAppFilter('ALL');
-                  setStatusFilter('ALL');
-                  setSearch('');
-                }}
-                className="text-xs font-bold text-rose-600 hover:text-rose-700 underline ml-1"
-              >
-                Reset Filters
-              </button>
-            )}
-          </div>
-
-          <div className="text-slate-500 font-medium text-[11px]">
-            Showing <span className="text-slate-900 font-bold">{filteredUsers.length}</span> of {users.length} accounts
-          </div>
+          <span className="text-slate-400 font-mono text-[11px] pl-1 hidden sm:inline">
+            ({filteredUsers.length})
+          </span>
         </div>
       </div>
 
-      {/* ── ACCOUNTS TABLE (FULL WIDTH, CLEAN ROWS, NO CLIPPING) ── */}
-      <div className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+      {/* ── 4. ENTERPRISE DATA TABLE (FITS 100% HORIZONTALLY, HIGH VERTICAL DENSITY) ── */}
+      <div className="w-full bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
         {loading ? (
-          <div className="p-16 text-center text-slate-400 text-xs font-bold flex flex-col items-center justify-center gap-2">
-            <Icon name="refresh" className="w-6 h-6 animate-spin text-[#84cc16]" />
+          <div className="py-12 text-center text-slate-400 text-xs font-bold flex items-center justify-center gap-2">
+            <Icon name="refresh" className="w-4 h-4 animate-spin text-[#84cc16]" />
             <span>Loading user directory...</span>
           </div>
         ) : filteredUsers.length === 0 ? (
-          <div className="p-16 text-center text-slate-400 text-xs font-medium space-y-2">
-            <p className="text-slate-600 font-bold">No accounts found matching your filters</p>
-            <p className="text-slate-400 text-[11px]">Try adjusting your search query or reset the filters above.</p>
+          <div className="py-12 text-center text-slate-400 text-xs font-medium space-y-1">
+            <p className="text-slate-700 font-bold">No accounts found matching your filters</p>
+            <p className="text-slate-400 text-[11px]">Adjust your search query or reset filters above.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-xs text-left min-w-[1000px]">
-              <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse table-fixed min-w-[880px]">
+              <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider select-none">
                 <tr>
-                  <th className="px-5 py-3.5">User &amp; Account</th>
-                  <th className="px-5 py-3.5">Contact Details</th>
-                  <th className="px-5 py-3.5 text-center">Role &amp; Type</th>
-                  <th className="px-5 py-3.5">Client Creation Authority</th>
-                  <th className="px-5 py-3.5">Screen Permissions</th>
-                  <th className="px-5 py-3.5 text-center">Status</th>
-                  <th className="px-5 py-3.5 text-right">Super Admin Actions</th>
+                  <th className="px-3.5 py-2.5 w-[22%]">User &amp; Identity</th>
+                  <th className="px-3 py-2.5 w-[16%]">Login / Contact</th>
+                  <th className="px-3 py-2.5 w-[12%] text-center">Role</th>
+                  <th className="px-3 py-2.5 w-[24%]">App Authority / Scope</th>
+                  <th className="px-3 py-2.5 w-[14%]">Screens</th>
+                  <th className="px-2 py-2.5 w-[6%] text-center">Status</th>
+                  <th className="px-3 py-2.5 w-[6%] text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -555,11 +518,11 @@ export default function Users() {
                   const isClient = u.role === 'client' || u.role === 'client_admin';
 
                   return (
-                    <tr key={u._id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={u._id} className="hover:bg-slate-50/70 transition-colors">
                       {/* Name & Avatar */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black font-mono text-xs flex-shrink-0 shadow-2xs ${
+                      <td className="px-3.5 py-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-black font-mono text-[11px] flex-shrink-0 shadow-2xs ${
                             isSuper
                               ? 'bg-amber-100 text-amber-950 border border-amber-300'
                               : isClient
@@ -568,82 +531,76 @@ export default function Users() {
                           }`}>
                             {(u.name || 'U').charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                              <span>{u.name}</span>
+                          <div className="min-w-0 truncate">
+                            <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5 truncate">
+                              <span className="truncate">{u.name}</span>
                               {u.isPermanentSuperAdmin && (
-                                <span className="px-1.5 py-0.5 rounded-md bg-amber-400 text-slate-950 text-[9px] font-black uppercase tracking-wider">
+                                <span className="px-1 py-0.1 rounded bg-amber-400 text-slate-950 text-[8px] font-black uppercase tracking-wider flex-shrink-0">
                                   MASTER
                                 </span>
                               )}
                             </div>
-                            <span className="text-[10px] text-slate-400 font-mono">UID: {String(u._id).slice(-6)}</span>
+                            <span className="text-[9px] text-slate-400 font-mono">UID: {String(u._id).slice(-6)}</span>
                           </div>
                         </div>
                       </td>
 
                       {/* Mobile & Email */}
-                      <td className="px-5 py-4">
+                      <td className="px-3 py-2.5 truncate">
                         <div className="font-mono font-bold text-slate-900 text-xs">{u.mobile}</div>
                         {u.email ? (
-                          <div className="text-[11px] text-slate-500 truncate max-w-[200px] mt-0.5">{u.email}</div>
+                          <div className="text-[10px] text-slate-400 truncate">{u.email}</div>
                         ) : (
-                          <div className="text-[10px] text-slate-300 italic mt-0.5">No email registered</div>
+                          <div className="text-[9px] text-slate-300 italic">No email</div>
                         )}
                       </td>
 
-                      {/* Role & Category */}
-                      <td className="px-5 py-4 text-center">
-                        <div className="inline-flex flex-col items-center gap-1">
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                            isSuper
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300/80'
-                              : isClient
-                              ? 'bg-sky-100 text-sky-900 border border-sky-300/80'
-                              : 'bg-emerald-100 text-emerald-900 border border-emerald-300/80'
-                          }`}>
-                            <Icon name={isSuper ? 'shield' : isClient ? 'store' : 'key'} className="w-3 h-3" />
-                            <span>{u.roleLabel}</span>
-                          </span>
-
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            {isClient ? 'External Application' : 'Renic Soft Internal'}
-                          </span>
-                        </div>
+                      {/* Role */}
+                      <td className="px-3 py-2.5 text-center">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                          isSuper
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300/80'
+                            : isClient
+                            ? 'bg-sky-100 text-sky-900 border border-sky-300/80'
+                            : 'bg-emerald-100 text-emerald-900 border border-emerald-300/80'
+                        }`}>
+                          <Icon name={isSuper ? 'shield' : isClient ? 'store' : 'key'} className="w-2.5 h-2.5" />
+                          <span>{u.roleLabel}</span>
+                        </span>
                       </td>
 
                       {/* Application Authority */}
-                      <td className="px-5 py-4">
+                      <td className="px-3 py-2.5">
                         {isSuper ? (
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200/80 text-xs font-bold">
-                            <Icon name="check" className="w-3.5 h-3.5 text-amber-600" />
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-bold">
+                            <Icon name="check" className="w-3 h-3 text-amber-600" />
                             <span>All Software Applications</span>
-                          </div>
+                          </span>
                         ) : isClient ? (
                           <div>
                             {u.clientAppCode ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-800 border border-sky-200 text-xs font-bold">
-                                <Icon name="store" className="w-3 h-3 text-sky-600" />
-                                <span>{applications.find(a => a.appCode === u.clientAppCode)?.name || u.clientAppCode}</span>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-sky-50 text-sky-800 border border-sky-200 text-[10px] font-bold truncate max-w-full">
+                                <Icon name="store" className="w-2.5 h-2.5 text-sky-600 flex-shrink-0" />
+                                <span className="truncate">{applications.find(a => a.appCode === u.clientAppCode)?.name || u.clientAppCode}</span>
                               </span>
                             ) : (
-                              <span className="text-slate-400 text-xs italic">Application not assigned</span>
+                              <span className="text-slate-400 text-[10px] italic">Not assigned</span>
                             )}
                           </div>
                         ) : (
-                          <div className="space-y-1">
+                          <div>
                             {(u.assignedApplications || []).length === 0 ? (
-                              <span className="inline-block px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold">
-                                No Applications Assigned (Cannot create clients)
+                              <span className="inline-block px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 border border-rose-200 text-[9px] font-bold">
+                                No Apps Assigned
                               </span>
                             ) : (
-                              <div className="flex items-center gap-1.5 flex-wrap max-w-sm">
+                              <div className="flex items-center gap-1 flex-wrap">
                                 {(u.assignedApplications || []).map((code) => {
                                   const app = applications.find(a => a.appCode === code);
                                   return (
                                     <span
                                       key={code}
-                                      className="px-2 py-0.5 bg-emerald-50 text-emerald-800 rounded-md text-[10px] font-black border border-emerald-200/80"
+                                      className="px-1.5 py-0.2 bg-emerald-50 text-emerald-800 rounded text-[9px] font-bold border border-emerald-200/80"
                                     >
                                       {app?.name || code}
                                     </span>
@@ -656,78 +613,61 @@ export default function Users() {
                       </td>
 
                       {/* Screen Permissions */}
-                      <td className="px-5 py-4">
+                      <td className="px-3 py-2.5">
                         {isSuper ? (
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200/80 text-xs font-bold">
-                            <Icon name="check" className="w-3.5 h-3.5 text-amber-600" />
-                            <span>All Screens ({modules.length} Pages)</span>
-                          </div>
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
+                            <Icon name="check" className="w-2.5 h-2.5 text-emerald-600" />
+                            <span>All Screens ({modules.length})</span>
+                          </span>
                         ) : (
-                          <div className="space-y-1">
-                            <span className="text-xs font-bold text-slate-800">
-                              {(u.allowedPages || []).length} / {modules.length} screens
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px] font-bold text-slate-800 font-mono">
+                              {(u.allowedPages || []).length}/{modules.length}
                             </span>
-                            <div className="flex items-center gap-1 flex-wrap max-w-xs">
-                              {(u.allowedPages || []).slice(0, 3).map((p) => {
-                                const found = modules.find((m) => m.path === p);
-                                return (
-                                  <span
-                                    key={p}
-                                    className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[9px] font-bold border border-slate-200"
-                                  >
-                                    {found?.label || p}
-                                  </span>
-                                );
-                              })}
-                              {(u.allowedPages || []).length > 3 && (
-                                <span className="text-[10px] font-bold text-slate-400">
-                                  +{(u.allowedPages || []).length - 3} more
-                                </span>
-                              )}
-                            </div>
+                            <span className="text-[10px] text-slate-400">screens</span>
                           </div>
                         )}
                       </td>
 
                       {/* Active Status */}
-                      <td className="px-5 py-4 text-center">
+                      <td className="px-2 py-2.5 text-center">
                         <button
                           onClick={() => handleToggleStatus(u)}
                           disabled={u.isPermanentSuperAdmin}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase transition shadow-2xs ${
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase transition ${
                             u.isActive
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
                               : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
                           } ${u.isPermanentSuperAdmin ? 'opacity-70 cursor-not-allowed' : 'active:scale-95'}`}
-                          title={u.isPermanentSuperAdmin ? 'Primary Super Admin cannot be deactivated' : 'Click to toggle active status'}
+                          title={u.isPermanentSuperAdmin ? 'Primary Super Admin cannot be deactivated' : 'Click to toggle status'}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                          <span>{u.isActive ? 'Active' : 'Inactive'}</span>
+                          <span className={`w-1 h-1 rounded-full ${u.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                          <span>{u.isActive ? 'Active' : 'Off'}</span>
                         </button>
                       </td>
 
                       {/* Actions */}
-                      <td className="px-5 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="px-3 py-2.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => openEditModal(u)}
-                            className="p-2 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition"
-                            title="Edit Permissions &amp; Assigned Applications"
+                            className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition"
+                            title="Edit User &amp; Permissions"
                           >
                             <Icon name="edit" className="w-3.5 h-3.5" />
                           </button>
 
                           <button
                             onClick={() => openPasswordModal(u)}
-                            className="p-2 text-slate-600 hover:text-amber-700 bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-200 rounded-lg transition"
-                            title="Reset User Password"
+                            className="p-1 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded transition"
+                            title="Reset Password"
                           >
                             <Icon name="key" className="w-3.5 h-3.5" />
                           </button>
 
                           {u.isPermanentSuperAdmin ? (
                             <span
-                              className="p-2 text-slate-300 cursor-not-allowed"
+                              className="p-1 text-slate-300 cursor-not-allowed"
                               title="Primary Super Admin cannot be deleted"
                             >
                               <Icon name="shield" className="w-3.5 h-3.5" />
@@ -735,7 +675,7 @@ export default function Users() {
                           ) : (
                             <button
                               onClick={() => handleDeleteUser(u)}
-                              className="p-2 text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-lg transition"
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
                               title="Delete Account"
                             >
                               <Icon name="trash" className="w-3.5 h-3.5" />

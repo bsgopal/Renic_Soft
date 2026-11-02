@@ -345,7 +345,7 @@ export default function Layout({ children }) {
         </aside>
 
         {/* MAIN WORKSPACE (Takes 100% Remaining Screen Real Estate) */}
-        <main className={`flex-1 min-w-0 overflow-hidden flex flex-col ${isFullHeightPage ? 'p-0' : 'overflow-y-auto p-4 sm:p-6'}`}>
+        <main className={`flex-1 min-w-0 overflow-hidden flex flex-col ${isFullHeightPage ? 'p-0' : 'overflow-y-auto p-2.5 sm:p-3.5'}`}>
           {children}
         </main>
       </div>
