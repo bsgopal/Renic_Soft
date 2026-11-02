@@ -5,7 +5,7 @@ import { Icon } from './icons.jsx';
 import api from '../api.js';
 import logo from '../assets/logo.png';
 
-const NAV_MODULES = [
+const ALL_NAV_MODULES = [
   { to: '/', icon: 'dashboard', label: 'Dashboard', short: 'Dash', end: true },
   { to: '/licenses', icon: 'license', label: 'Licenses & Fleet', short: 'Licenses' },
   { to: '/plan-tiers', icon: 'license', label: 'Plan Tiers & Screens', short: 'Plans' },
@@ -21,6 +21,14 @@ const NAV_MODULES = [
   { to: '/settings', icon: 'store', label: 'Company Settings', short: 'Settings' }
 ];
 
+const SUPER_ADMIN_MODULE = {
+  to: '/users',
+  icon: 'users',
+  label: 'User Management',
+  short: 'Users',
+  badge: 'Super Admin'
+};
+
 const severityDot = {
   critical: 'bg-rose-600 animate-pulse',
   error: 'bg-red-500',
@@ -29,9 +37,14 @@ const severityDot = {
 };
 
 export default function Layout({ children }) {
-  const { user = null, logout = () => {} } = useAuth() || {};
+  const { user = null, logout = () => {}, isSuperAdmin = false, canAccessPage = () => false } = useAuth() || {};
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Filter modules based on RBAC permissions: Super Admin sees all + User Management; others see assigned pages
+  const visibleNavModules = isSuperAdmin
+    ? [...ALL_NAV_MODULES, SUPER_ADMIN_MODULE]
+    : ALL_NAV_MODULES.filter((m) => canAccessPage(m.to));
 
   // Left sidebar starts expanded by default
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
@@ -114,7 +127,7 @@ export default function Layout({ children }) {
   const unread = notifs.unreadCount || 0;
 
   // Check if current page is full-height 2-column workspace
-  const isFullHeightPage = ['/licenses', '/quotes', '/billing', '/applications', '/network', '/credentials'].some(
+  const isFullHeightPage = ['/licenses', '/quotes', '/billing', '/applications', '/network', '/credentials', '/users'].some(
     p => location.pathname.startsWith(p)
   );
 
@@ -216,8 +229,22 @@ export default function Layout({ children }) {
             )}
           </div>
 
-          {/* Profile Avatar */}
+          {/* Profile Avatar & Role Badge */}
           <div className="flex items-center gap-2 pl-2 border-l border-slate-700">
+            <div className="hidden md:flex flex-col items-end text-right">
+              <span className="text-xs font-bold text-white leading-tight truncate max-w-[120px]">
+                {user?.name || 'User'}
+              </span>
+              <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded mt-0.5 ${
+                isSuperAdmin
+                  ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40'
+                  : user?.role === 'client'
+                  ? 'bg-sky-400/20 text-sky-300 border border-sky-400/40'
+                  : 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/40'
+              }`}>
+                {isSuperAdmin ? 'Super Admin' : user?.role === 'client' ? 'Client' : 'Admin'}
+              </span>
+            </div>
             <div className="w-7 h-7 rounded-full bg-slate-800 text-[#84cc16] ring-1 ring-slate-700 flex items-center justify-center text-xs font-bold font-mono">
               {initials}
             </div>
@@ -231,7 +258,7 @@ export default function Layout({ children }) {
       {/* ── 2. SUB-HEADER MODULE SCREEN TABS (OBSIDIAN DARK BACKGROUND) ── */}
       <div className="bg-[#1e293b] border-b border-slate-800 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-shrink-0 z-30">
         <div className="flex items-center gap-1.5 min-w-max">
-          {NAV_MODULES.map((m) => (
+          {visibleNavModules.map((m) => (
             <NavLink
               key={m.to}
               to={m.to}
@@ -246,6 +273,11 @@ export default function Layout({ children }) {
             >
               <Icon name={m.icon} className="w-3.5 h-3.5" />
               <span>{m.short}</span>
+              {m.badge && (
+                <span className="text-[9px] px-1 py-0.2 rounded bg-amber-400 text-slate-950 font-black">
+                  {m.badge}
+                </span>
+              )}
             </NavLink>
           ))}
         </div>
@@ -261,7 +293,7 @@ export default function Layout({ children }) {
           }`}
         >
           <div className="flex-1 py-2 px-1.5 space-y-1 overflow-y-auto">
-            {NAV_MODULES.map((m) => (
+            {visibleNavModules.map((m) => (
               <NavLink
                 key={m.to}
                 to={m.to}
@@ -279,7 +311,14 @@ export default function Layout({ children }) {
                   <Icon name={m.icon} className="w-4 h-4" />
                 </div>
                 {sidebarExpanded && (
-                  <span className="truncate">{m.label}</span>
+                  <div className="flex items-center justify-between flex-1 min-w-0">
+                    <span className="truncate">{m.label}</span>
+                    {m.badge && (
+                      <span className="text-[8px] px-1 py-0.2 rounded bg-amber-400/90 text-slate-950 font-black uppercase tracking-wider ml-1">
+                        Super
+                      </span>
+                    )}
+                  </div>
                 )}
                 {!sidebarExpanded && (
                   <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#020617] text-white text-xs font-bold rounded-lg shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-150 z-50 whitespace-nowrap border border-slate-700 flex items-center gap-2">

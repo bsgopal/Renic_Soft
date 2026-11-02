@@ -16,11 +16,16 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: 'User no longer exists' });
     }
     // Master platform owner safeguard
-    if (user.mobile === '9345578103' || (user.email && user.email.toLowerCase() === 'bsgopal0@gmail.com')) {
+    if (user.mobile === '9345578103' || (user.email && user.email.toLowerCase() === 'bsgopal0@gmail.com') || user.role === 'super_admin') {
       user.role = 'platform_owner';
       delete user.clientId;
     }
-    req.user = { ...user, _id: String(user._id) };
+    req.user = {
+      ...user,
+      _id: String(user._id),
+      allowedPages: user.allowedPages || [],
+      assignedApplications: user.assignedApplications || []
+    };
     if (user.clientId && user.role !== 'platform_owner') {
       req.user.clientId = String(user.clientId);
     }

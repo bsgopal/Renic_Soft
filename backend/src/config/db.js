@@ -44,6 +44,18 @@ export const connectDB = async () => {
     }
   }
 
+  // Local MongoDB fallback if primary URI failed and not on Vercel
+  if (!process.env.VERCEL && effectiveUri !== 'mongodb://127.0.0.1:27017/renic_soft') {
+    try {
+      console.log('[MongoDB]: Attempting local fallback on mongodb://127.0.0.1:27017/renic_soft...');
+      await mongoose.connect('mongodb://127.0.0.1:27017/renic_soft', { dbName: 'renic_soft', serverSelectionTimeoutMS: 3000 });
+      console.log('[Database Mode]: MONGODB Connected via local fallback (DB: renic_soft)');
+      return;
+    } catch (localErr) {
+      console.warn('[MongoDB Local Fallback]:', localErr.message);
+    }
+  }
+
   console.error('[Fatal] MongoDB is unreachable.');
   if (process.env.VERCEL) {
     throw new Error('MongoDB is unreachable from Vercel. Please verify your MongoDB connection string and ensure IP 0.0.0.0/0 is whitelisted in MongoDB Atlas Network Access.');

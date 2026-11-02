@@ -506,7 +506,7 @@ _Powered by Renic Soft Cloud Gateway_`;
             )}
 
             {inspectorTab === 'profile' && fleetEditForm && (
-              <form onSubmit={handleSaveFleetEdit} className="space-y-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs max-w-xl">
+              <form onSubmit={handleSaveFleetEdit} className="space-y-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs w-full">
                 <h4 className="text-xs font-bold text-slate-900 uppercase">Showroom Profile &amp; Contact</h4>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Store / Showroom Name</label>

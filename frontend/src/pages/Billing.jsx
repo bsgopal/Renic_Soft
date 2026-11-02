@@ -529,7 +529,7 @@ export default function Billing() {
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-slate-50/60">
-              <form onSubmit={handleSave} className="space-y-5 max-w-4xl">
+              <form onSubmit={handleSave} className="space-y-5 w-full">
               
               {/* Customer Information Card */}
               <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">

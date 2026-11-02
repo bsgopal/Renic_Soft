@@ -198,7 +198,7 @@ export default function Settings() {
 
       {/* Main Settings Panel Body */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           {/* TAB 1: Company Profile & Letterhead */}
           {activeTab === 'company' && (
             <form onSubmit={handleSaveCompany} className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-4">

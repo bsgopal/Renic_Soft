@@ -8,8 +8,21 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: {
     type: String,
-    enum: ['platform_owner', 'admin', 'client_admin', 'floor_manager', 'cashier', 'staff'],
+    enum: ['platform_owner', 'super_admin', 'admin', 'client', 'client_admin', 'floor_manager', 'cashier', 'staff'],
     default: 'admin'
+  },
+  allowedPages: {
+    type: [String],
+    default: []
+  },
+  assignedApplications: {
+    type: [String],
+    default: []
+  },
+  clientAppCode: {
+    type: String,
+    default: '',
+    trim: true
   },
   permissions: {
     create_product: { type: Boolean, default: false },

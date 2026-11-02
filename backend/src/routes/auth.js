@@ -122,6 +122,7 @@ router.post('/login', async (req, res) => {
       }
     }
 
+    const isSuper = (user.role === 'platform_owner' || user.role === 'super_admin' || user.mobile === '9345578103' || (user.email && user.email.toLowerCase() === 'bsgopal0@gmail.com'));
     const token = signToken(user);
     res.json({
       token,
@@ -130,8 +131,13 @@ router.post('/login', async (req, res) => {
         name: user.name,
         email: user.email,
         mobile: user.mobile,
-        role: user.role,
+        role: isSuper ? 'platform_owner' : user.role,
         permissions: user.permissions,
+        allowedPages: isSuper
+          ? ['/', '/licenses', '/plan-tiers', '/applications', '/deployments', '/credentials', '/activity-report', '/network', '/quotes', '/billing', '/reports', '/notifications', '/settings', '/users']
+          : (user.allowedPages || []),
+        assignedApplications: user.assignedApplications || [],
+        clientAppCode: user.clientAppCode || '',
         clientId: user.clientId
       }
     });
@@ -147,6 +153,11 @@ router.post('/login', async (req, res) => {
 router.get('/me', protect, async (req, res) => {
   const user = await dbHelper.findById('User', req.user._id);
   if (!user) return res.status(404).json({ message: 'User not found' });
+  const isSuper = (user.role === 'platform_owner' || user.role === 'super_admin' || user.mobile === '9345578103' || (user.email && user.email.toLowerCase() === 'bsgopal0@gmail.com'));
+  if (isSuper) {
+    user.role = 'platform_owner';
+    user.allowedPages = ['/', '/licenses', '/plan-tiers', '/applications', '/deployments', '/credentials', '/activity-report', '/network', '/quotes', '/billing', '/reports', '/notifications', '/settings', '/users'];
+  }
   let client = null;
   if (user.clientId) client = await dbHelper.findById('Client', user.clientId);
   res.json({ user, client });

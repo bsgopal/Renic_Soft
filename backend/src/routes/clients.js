@@ -218,10 +218,17 @@ router.post('/activate/verify-otp', async (req, res) => {
 
 // @desc    Get all shops / clients (licenses)
 // @route   GET /api/licenses
-// @access  Private (Platform Owner only)
-router.get('/', protect, authorize('platform_owner'), async (req, res) => {
+router.get('/', protect, authorize('platform_owner', 'admin'), async (req, res) => {
   try {
-    const clients = await dbHelper.find('Client', {});
+    const isSuper = req.user.role === 'platform_owner' || req.user.role === 'super_admin' || String(req.user.mobile).trim() === '9345578103';
+    let filter = {};
+    if (!isSuper) {
+      const allowedApps = req.user.assignedApplications || [];
+      if (allowedApps.length > 0) {
+        filter = { softwareProduct: { $in: allowedApps } };
+      }
+    }
+    const clients = await dbHelper.find('Client', filter);
     res.json(clients);
 
     // Asynchronously backfill any legacy clients lacking credentials in background without blocking response
@@ -462,6 +469,17 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
 
   if (!effectiveName || !effectiveEmail || !effectiveMobile) {
     return res.status(400).json({ message: 'Shop name, owner email, and mobile are required' });
+  }
+
+  // Enforce Application Authority for Admins
+  const isSuper = req.user.role === 'platform_owner' || req.user.role === 'super_admin' || String(req.user.mobile).trim() === '9345578103';
+  if (!isSuper) {
+    const allowedApps = req.user.assignedApplications || [];
+    if (allowedApps.length > 0 && !allowedApps.includes(softwareProduct)) {
+      return res.status(403).json({
+        message: `Permission denied: As an Admin, you are only authorized to create clients for: ${allowedApps.join(', ')}`
+      });
+    }
   }
 
   // Enforce Solution Mode selection for WhatsApp Automation Suite

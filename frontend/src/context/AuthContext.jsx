@@ -6,7 +6,9 @@ const defaultAuthContext = {
   client: null,
   login: () => {},
   logout: () => {},
-  isPlatform: false
+  isPlatform: false,
+  isSuperAdmin: false,
+  canAccessPage: () => false
 };
 
 const AuthContext = createContext(defaultAuthContext);
@@ -44,8 +46,42 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('renic_client');
   };
 
+  const isSuperAdmin = Boolean(
+    user && (
+      user.role === 'platform_owner' ||
+      user.role === 'super_admin' ||
+      String(user.mobile).trim() === '9345578103' ||
+      (user.email && String(user.email).toLowerCase().trim() === 'bsgopal0@gmail.com')
+    )
+  );
+
+  const canAccessPage = (path) => {
+    if (!user) return false;
+    if (isSuperAdmin) return true;
+    if (path === '/users') return false; // Strictly Super Admin only
+
+    const allowed = Array.isArray(user.allowedPages) ? user.allowedPages : [];
+    if (allowed.includes(path)) return true;
+
+    // Handle nested routes like /quotes/:id or /billing/:id
+    const baseRoute = '/' + path.split('/').filter(Boolean)[0];
+    if (allowed.includes(baseRoute)) return true;
+
+    return false;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, client, login, logout, isPlatform: user?.role === 'platform_owner' }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        client,
+        login,
+        logout,
+        isPlatform: isSuperAdmin,
+        isSuperAdmin,
+        canAccessPage
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

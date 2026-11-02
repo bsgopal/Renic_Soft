@@ -128,16 +128,21 @@ export function CopyBtn({ text, label = 'Copy', className = '', showLabel = true
 }
 
 export default function Licenses() {
-  const { user = null } = useAuth() || {};
+  const { user = null, isSuperAdmin } = useAuth() || {};
   const { showSnackbar = () => {}, confirmDialog = async () => true } = useSnackbar() || {};
   const [clients, setClients] = useState([]);
   const [apps, setApps] = useState([]);
-  // Applications a customer can actually be licensed to run. RENIC_SOFT (the
-  // operator's own `hq` console) carries assignable:false in the registry, so
-  // it is never offered as a product. Filtering on the flag rather than
-  // hardcoding an appCode blocklist keeps this correct for every app that is
-  // registered in Renic Soft after this code was written.
-  const assignableApps = apps.filter((a) => a.assignable !== false);
+
+  // If user is an Admin (not Super Admin), only show applications assigned to them by Super Admin
+  const userPermittedApps = (user && !isSuperAdmin && Array.isArray(user.assignedApplications) && user.assignedApplications.length > 0)
+    ? user.assignedApplications
+    : null;
+
+  const assignableApps = apps.filter((a) => {
+    if (a.assignable === false) return false;
+    if (userPermittedApps) return userPermittedApps.includes(a.appCode);
+    return true;
+  });
 
   /**
    * Application slug resolution.
@@ -1259,7 +1264,7 @@ export default function Licenses() {
             onScroll={handlePanelScroll}
             className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-slate-50/60"
           >
-            <form onSubmit={handleWizardSubmit} className="space-y-6 max-w-4xl">
+            <form onSubmit={handleWizardSubmit} className="space-y-6 w-full">
               
               {/* SECTION 1: Customer Profile */}
               <div id="sec-identity" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 scroll-mt-6">

@@ -19,6 +19,7 @@ import applicationRoutes from './routes/applications.js';
 import oauthRoutes from './routes/oauthRoutes.js';
 import activityRoutes from './routes/activityRoutes.js';
 import planTierRoutes from './routes/planTiers.js';
+import userRoutes from './routes/users.js';
 
 import Client from './models/Client.js';
 import { createProxyMiddleware } from 'http-proxy-middleware';
@@ -209,6 +210,7 @@ app.use('/api/oauth', oauthRoutes);
 app.use('/api/v1/activity', activityRoutes);
 app.use('/api/plan-tiers', planTierRoutes);
 app.use('/api/v1/plan-tiers', planTierRoutes);
+app.use('/api/users', userRoutes);
 
 // Root status check
 app.get('/', (req, res) => {
