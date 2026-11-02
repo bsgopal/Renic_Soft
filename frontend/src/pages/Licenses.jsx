@@ -1210,7 +1210,7 @@ export default function Licenses() {
                 >
                   <Icon name="expand" className="w-4 h-4" />
                 </button>
-                {selectedClient && (
+                {selectedClient && isSuperAdmin && (
                   <button
                     type="button"
                     onClick={() => handleDelete(selectedClient)}

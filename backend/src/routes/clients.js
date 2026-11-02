@@ -1154,8 +1154,8 @@ router.put('/:id/renew', protect, authorize('platform_owner', 'admin'), async (r
 
 // @desc    Delete a customer instance and deactivate all URLs
 // @route   DELETE /api/clients/:id or DELETE /api/licenses/:id
-// @access  Private (Admin / Platform Owner)
-router.delete('/:id', protect, authorize('platform_owner', 'admin'), async (req, res) => {
+// @access  Private (Super Admin / Platform Owner only)
+router.delete('/:id', protect, authorize('platform_owner'), async (req, res) => {
   try {
     const client = await Client.findById(req.params.id);
     if (!client) {

@@ -127,7 +127,7 @@ export default function Layout({ children }) {
   const unread = notifs.unreadCount || 0;
 
   // Check if current page is full-height 2-column workspace
-  const isFullHeightPage = ['/licenses', '/quotes', '/billing', '/applications', '/network', '/credentials', '/users'].some(
+  const isFullHeightPage = ['/licenses', '/quotes', '/billing', '/applications', '/network', '/credentials'].some(
     p => location.pathname.startsWith(p)
   );
 

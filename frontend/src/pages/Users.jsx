@@ -307,34 +307,33 @@ export default function Users() {
   }
 
   return (
-    <div className="w-full min-w-0 space-y-4 px-4 sm:px-6 py-4">
-      {/* ── TOP HEADER (FULL WIDTH) ── */}
-      <div className="w-full bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0f172a] text-[#84cc16] flex items-center justify-center shadow-xs">
-              <Icon name="users" className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                User &amp; Client Access Management
-              </h1>
-              <p className="text-xs text-slate-500 font-medium">
-                Super Admin control center: create Renic Soft staff, assign client creation authority per application, and manage external client accounts
-              </p>
+    <div className="w-full min-w-0 space-y-4 pb-24">
+      {/* ── TOP HEADER (CLEAN & ALIGNED) ── */}
+      <div className="w-full bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase bg-[#0f172a] text-[#84cc16] flex items-center gap-1.5 shadow-xs">
+              <Icon name="shield" className="w-3 h-3 text-[#84cc16]" />
+              Super Admin Authority
+            </span>
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-amber-50 border border-amber-200/80 rounded-full text-amber-900 text-[11px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <span>Primary Super Admin: 9345578103</span>
             </div>
           </div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            User Access &amp; Permission Console
+          </h1>
+          <p className="text-xs text-slate-500 font-medium max-w-2xl">
+            Only Super Admin can create, edit, or delete accounts, assign screen visibility, and grant application client-creation authority.
+          </p>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs font-bold shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            <span>Master Super Admin: 9345578103</span>
-          </div>
-
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2.5 flex-wrap flex-shrink-0">
           <button
             onClick={() => openCreateModal('INTERNAL_USER')}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] font-black rounded-xl text-xs transition shadow-xs active:scale-98"
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#84cc16] hover:bg-[#72b012] text-[#0f172a] font-black rounded-xl text-xs transition shadow-xs hover:shadow-sm active:scale-98"
             title="Create internal Renic Soft staff / admin"
           >
             <Icon name="plus" className="w-4 h-4 stroke-[2.5]" />
@@ -343,159 +342,211 @@ export default function Users() {
 
           <button
             onClick={() => openCreateModal('EXTERNAL_CLIENT')}
-            className="flex items-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-black rounded-xl text-xs transition shadow-xs active:scale-98"
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition shadow-xs hover:shadow-sm active:scale-98"
             title="Create client account for an external application"
           >
-            <Icon name="store" className="w-4 h-4" />
+            <Icon name="store" className="w-4 h-4 text-sky-400" />
             <span>Add External Client</span>
           </button>
         </div>
       </div>
 
-      {/* ── METRIC TILES (FULL WIDTH 5-COL GRID) ── */}
-      <div className="w-full grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
-          <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Total Accounts</span>
-          <div className="text-2xl font-black text-slate-900 mt-0.5">{stats.total}</div>
-          <span className="text-[10px] text-slate-400 font-medium">Registered in system</span>
+      {/* ── METRIC TILES (EXECUTIVE 5-COL STAT CARDS) ── */}
+      <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs hover:border-slate-300 transition">
+          <div className="flex items-center justify-between text-slate-400 mb-1">
+            <span className="text-[10px] font-black uppercase tracking-wider">Total Accounts</span>
+            <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+              <Icon name="users" className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-slate-900">{stats.total}</div>
+          <span className="text-[10px] text-slate-400 font-medium">All registered identities</span>
         </div>
 
-        <div className="bg-white p-3.5 rounded-2xl border border-amber-200 shadow-2xs bg-gradient-to-br from-amber-50/40 to-white">
-          <span className="text-[10px] font-black uppercase text-amber-700 tracking-wider">Super Admins</span>
-          <div className="text-2xl font-black text-amber-900 mt-0.5">{stats.superAdmins}</div>
-          <span className="text-[10px] text-amber-700 font-medium">Full master authority</span>
+        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs hover:border-amber-300 transition">
+          <div className="flex items-center justify-between text-amber-600 mb-1">
+            <span className="text-[10px] font-black uppercase tracking-wider">Super Admins</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
+              <Icon name="shield" className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-amber-900">{stats.superAdmins}</div>
+          <span className="text-[10px] text-amber-700 font-medium">Master authority</span>
         </div>
 
-        <div className="bg-white p-3.5 rounded-2xl border border-emerald-200 shadow-2xs bg-gradient-to-br from-emerald-50/40 to-white">
-          <span className="text-[10px] font-black uppercase text-emerald-700 tracking-wider">Renic Soft Admins</span>
-          <div className="text-2xl font-black text-emerald-900 mt-0.5">{stats.internalAdmins}</div>
-          <span className="text-[10px] text-emerald-700 font-medium">Internal staff with assigned apps</span>
+        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs hover:border-emerald-300 transition">
+          <div className="flex items-center justify-between text-emerald-600 mb-1">
+            <span className="text-[10px] font-black uppercase tracking-wider">Renic Soft Admins</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+              <Icon name="key" className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-emerald-900">{stats.internalAdmins}</div>
+          <span className="text-[10px] text-emerald-700 font-medium">Scoped app authorities</span>
         </div>
 
-        <div className="bg-white p-3.5 rounded-2xl border border-sky-200 shadow-2xs bg-gradient-to-br from-sky-50/40 to-white">
-          <span className="text-[10px] font-black uppercase text-sky-700 tracking-wider">External Clients</span>
-          <div className="text-2xl font-black text-sky-900 mt-0.5">{stats.externalClients}</div>
-          <span className="text-[10px] text-sky-700 font-medium">Customers for external apps</span>
+        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs hover:border-sky-300 transition">
+          <div className="flex items-center justify-between text-sky-600 mb-1">
+            <span className="text-[10px] font-black uppercase tracking-wider">External Clients</span>
+            <div className="w-7 h-7 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center">
+              <Icon name="store" className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-sky-900">{stats.externalClients}</div>
+          <span className="text-[10px] text-sky-700 font-medium">App tenants</span>
         </div>
 
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
-          <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Active Logins</span>
-          <div className="text-2xl font-black text-[#65a30d] mt-0.5">{stats.active} / {stats.total}</div>
-          <span className="text-[10px] text-slate-400 font-medium">Permitted accounts</span>
-        </div>
-      </div>
-
-      {/* ── PRIMARY CATEGORY TABS (INTERNAL USERS vs EXTERNAL CLIENTS) ── */}
-      <div className="w-full bg-white p-2.5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          {[
-            { id: 'ALL', label: 'All Accounts', count: stats.total },
-            { id: 'INTERNAL_USERS', label: '🏢 Renic Soft Internal Users (Admins)', count: stats.superAdmins + stats.internalAdmins },
-            { id: 'EXTERNAL_CLIENTS', label: '🛍️ External Application Clients', count: stats.externalClients }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setCategoryTab(tab.id)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 whitespace-nowrap ${
-                categoryTab === tab.id
-                  ? 'bg-[#0f172a] text-white shadow-xs'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-              }`}
-            >
-              <span>{tab.label}</span>
-              <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-black ${
-                categoryTab === tab.id ? 'bg-[#84cc16] text-[#0f172a]' : 'bg-white text-slate-700'
-              }`}>
-                {tab.count}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Search Input */}
-        <div className="relative w-full md:w-80">
-          <Icon name="search" className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search by name, 10-digit mobile, email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-hidden focus:border-[#84cc16] focus:bg-white"
-          />
+        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs hover:border-lime-300 transition col-span-2 sm:col-span-1">
+          <div className="flex items-center justify-between text-[#65a30d] mb-1">
+            <span className="text-[10px] font-black uppercase tracking-wider">Active Logins</span>
+            <div className="w-7 h-7 rounded-lg bg-lime-50 text-[#65a30d] flex items-center justify-center">
+              <Icon name="check" className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-slate-900">{stats.active} <span className="text-xs text-slate-400 font-normal">/ {stats.total}</span></div>
+          <span className="text-[10px] text-emerald-600 font-medium">Enabled accounts</span>
         </div>
       </div>
 
-      {/* ── FILTER CONTROLS BAR (FULL WIDTH) ── */}
-      <div className="w-full bg-slate-100/70 p-2.5 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-2.5 flex-wrap text-xs">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-bold text-slate-500 text-[11px] uppercase tracking-wider pl-1">Filters:</span>
-
-          {/* Role Filter */}
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16]"
-          >
-            <option value="ALL">All Roles</option>
-            <option value="SUPER_ADMIN">Super Admin Only</option>
-            <option value="ADMIN">Renic Soft Admin Only</option>
-            <option value="CLIENT">Client Only</option>
-          </select>
-
-          {/* Application Filter */}
-          <select
-            value={appFilter}
-            onChange={(e) => setAppFilter(e.target.value)}
-            className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16]"
-          >
-            <option value="ALL">All Applications</option>
-            {applications.map((app) => (
-              <option key={app.appCode} value={app.appCode}>
-                {app.name}
-              </option>
+      {/* ── UNIFIED FILTER & SEARCH BAR ── */}
+      <div className="w-full bg-white p-3 rounded-2xl border border-slate-200/90 shadow-xs space-y-3">
+        {/* Row 1: Segmented Tabs & Search */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Segmented Category Tabs */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl overflow-x-auto no-scrollbar">
+            {[
+              { id: 'ALL', label: 'All Accounts', count: stats.total },
+              { id: 'INTERNAL_USERS', label: 'Renic Soft Staff (Admins)', count: stats.superAdmins + stats.internalAdmins },
+              { id: 'EXTERNAL_CLIENTS', label: 'External App Clients', count: stats.externalClients }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setCategoryTab(tab.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+                  categoryTab === tab.id
+                    ? 'bg-white text-slate-900 shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${
+                  categoryTab === tab.id ? 'bg-[#84cc16] text-[#0f172a]' : 'bg-slate-200/80 text-slate-600'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
             ))}
-          </select>
+          </div>
 
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16]"
-          >
-            <option value="ALL">All Status</option>
-            <option value="ACTIVE">Active Only</option>
-            <option value="INACTIVE">Deactivated Only</option>
-          </select>
+          {/* Search Input */}
+          <div className="relative w-full md:w-80">
+            <Icon name="search" className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search by name, mobile, email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-hidden focus:border-[#84cc16] focus:bg-white"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="text-slate-500 font-bold text-[11px] pr-1">
-          Showing <span className="text-slate-900 font-black">{filteredUsers.length}</span> of {users.length} accounts
+        {/* Row 2: Secondary Dropdown Filters */}
+        <div className="flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-slate-100 text-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-slate-400 text-[10px] uppercase tracking-wider">Filter:</span>
+
+            {/* Role Filter */}
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16]"
+            >
+              <option value="ALL">All Roles</option>
+              <option value="SUPER_ADMIN">Super Admin Only</option>
+              <option value="ADMIN">Renic Soft Admin Only</option>
+              <option value="CLIENT">Client Only</option>
+            </select>
+
+            {/* Application Filter */}
+            <select
+              value={appFilter}
+              onChange={(e) => setAppFilter(e.target.value)}
+              className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16]"
+            >
+              <option value="ALL">All Applications</option>
+              {applications.map((app) => (
+                <option key={app.appCode} value={app.appCode}>
+                  {app.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16]"
+            >
+              <option value="ALL">All Status</option>
+              <option value="ACTIVE">Active Only</option>
+              <option value="INACTIVE">Deactivated Only</option>
+            </select>
+
+            {(roleFilter !== 'ALL' || appFilter !== 'ALL' || statusFilter !== 'ALL' || search) && (
+              <button
+                onClick={() => {
+                  setRoleFilter('ALL');
+                  setAppFilter('ALL');
+                  setStatusFilter('ALL');
+                  setSearch('');
+                }}
+                className="text-xs font-bold text-rose-600 hover:text-rose-700 underline ml-1"
+              >
+                Reset Filters
+              </button>
+            )}
+          </div>
+
+          <div className="text-slate-500 font-medium text-[11px]">
+            Showing <span className="text-slate-900 font-bold">{filteredUsers.length}</span> of {users.length} accounts
+          </div>
         </div>
       </div>
 
-      {/* ── FULL WIDTH ACCOUNTS TABLE ── */}
-      <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+      {/* ── ACCOUNTS TABLE (FULL WIDTH, CLEAN ROWS, NO CLIPPING) ── */}
+      <div className="w-full bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-400 text-xs font-bold flex items-center justify-center gap-2">
-            <Icon name="refresh" className="w-4 h-4 animate-spin text-[#84cc16]" />
+          <div className="p-16 text-center text-slate-400 text-xs font-bold flex flex-col items-center justify-center gap-2">
+            <Icon name="refresh" className="w-6 h-6 animate-spin text-[#84cc16]" />
             <span>Loading user directory...</span>
           </div>
         ) : filteredUsers.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-xs font-medium">
-            No accounts match the selected filters
+          <div className="p-16 text-center text-slate-400 text-xs font-medium space-y-2">
+            <p className="text-slate-600 font-bold">No accounts found matching your filters</p>
+            <p className="text-slate-400 text-[11px]">Try adjusting your search query or reset the filters above.</p>
           </div>
         ) : (
           <div className="overflow-x-auto w-full">
-            <table className="w-full text-xs text-left min-w-[980px]">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-black uppercase text-[10px] tracking-wider">
+            <table className="w-full text-xs text-left min-w-[1000px]">
+              <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
                 <tr>
-                  <th className="px-4 py-3.5">Account Details</th>
-                  <th className="px-4 py-3.5">Contact &amp; Login</th>
-                  <th className="px-4 py-3.5 text-center">Type &amp; Role</th>
-                  <th className="px-4 py-3.5">App Creation Authority / Scope</th>
-                  <th className="px-4 py-3.5">Permitted Screens</th>
-                  <th className="px-4 py-3.5 text-center">Status</th>
-                  <th className="px-4 py-3.5 text-right">Actions</th>
+                  <th className="px-5 py-3.5">User &amp; Account</th>
+                  <th className="px-5 py-3.5">Contact Details</th>
+                  <th className="px-5 py-3.5 text-center">Role &amp; Type</th>
+                  <th className="px-5 py-3.5">Client Creation Authority</th>
+                  <th className="px-5 py-3.5">Screen Permissions</th>
+                  <th className="px-5 py-3.5 text-center">Status</th>
+                  <th className="px-5 py-3.5 text-right">Super Admin Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -504,116 +555,116 @@ export default function Users() {
                   const isClient = u.role === 'client' || u.role === 'client_admin';
 
                   return (
-                    <tr key={u._id} className="hover:bg-slate-50/70 transition">
+                    <tr key={u._id} className="hover:bg-slate-50/80 transition-colors">
                       {/* Name & Avatar */}
-                      <td className="px-4 py-3.5">
+                      <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold font-mono text-xs ${
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black font-mono text-xs flex-shrink-0 shadow-2xs ${
                             isSuper
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              ? 'bg-amber-100 text-amber-950 border border-amber-300'
                               : isClient
-                              ? 'bg-sky-100 text-sky-900 border border-sky-300'
-                              : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                              ? 'bg-sky-100 text-sky-950 border border-sky-300'
+                              : 'bg-emerald-100 text-emerald-950 border border-emerald-300'
                           }`}>
                             {(u.name || 'U').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-black text-slate-900 flex items-center gap-1.5">
+                            <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
                               <span>{u.name}</span>
                               {u.isPermanentSuperAdmin && (
-                                <span className="px-1.5 py-0.2 rounded-md bg-amber-400 text-slate-950 text-[9px] font-black uppercase">
-                                  Master
+                                <span className="px-1.5 py-0.5 rounded-md bg-amber-400 text-slate-950 text-[9px] font-black uppercase tracking-wider">
+                                  MASTER
                                 </span>
                               )}
                             </div>
-                            <span className="text-[10px] text-slate-400">ID: {String(u._id).slice(-6)}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">UID: {String(u._id).slice(-6)}</span>
                           </div>
                         </div>
                       </td>
 
                       {/* Mobile & Email */}
-                      <td className="px-4 py-3.5">
-                        <div className="font-mono font-bold text-slate-900">{u.mobile}</div>
+                      <td className="px-5 py-4">
+                        <div className="font-mono font-bold text-slate-900 text-xs">{u.mobile}</div>
                         {u.email ? (
-                          <div className="text-[11px] text-slate-400 truncate max-w-[180px]">{u.email}</div>
+                          <div className="text-[11px] text-slate-500 truncate max-w-[200px] mt-0.5">{u.email}</div>
                         ) : (
-                          <div className="text-[10px] text-slate-300 italic">No email</div>
+                          <div className="text-[10px] text-slate-300 italic mt-0.5">No email registered</div>
                         )}
                       </td>
 
-                      {/* Account Category & Role */}
-                      <td className="px-4 py-3.5 text-center">
+                      {/* Role & Category */}
+                      <td className="px-5 py-4 text-center">
                         <div className="inline-flex flex-col items-center gap-1">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
                             isSuper
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300/80'
                               : isClient
-                              ? 'bg-sky-100 text-sky-900 border border-sky-300'
-                              : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                              ? 'bg-sky-100 text-sky-900 border border-sky-300/80'
+                              : 'bg-emerald-100 text-emerald-900 border border-emerald-300/80'
                           }`}>
                             <Icon name={isSuper ? 'shield' : isClient ? 'store' : 'key'} className="w-3 h-3" />
                             <span>{u.roleLabel}</span>
                           </span>
 
-                          <span className="text-[9px] text-slate-400 font-semibold">
+                          <span className="text-[10px] text-slate-400 font-medium">
                             {isClient ? 'External Application' : 'Renic Soft Internal'}
                           </span>
                         </div>
                       </td>
 
                       {/* Application Authority */}
-                      <td className="px-4 py-3.5">
+                      <td className="px-5 py-4">
                         {isSuper ? (
-                          <div className="flex items-center gap-1 text-amber-800 font-bold text-[11px]">
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200/80 text-xs font-bold">
                             <Icon name="check" className="w-3.5 h-3.5 text-amber-600" />
                             <span>All Software Applications</span>
                           </div>
                         ) : isClient ? (
                           <div>
                             {u.clientAppCode ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 text-sky-800 border border-sky-200 text-[10px] font-bold">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-800 border border-sky-200 text-xs font-bold">
+                                <Icon name="store" className="w-3 h-3 text-sky-600" />
                                 <span>{applications.find(a => a.appCode === u.clientAppCode)?.name || u.clientAppCode}</span>
                               </span>
                             ) : (
-                              <span className="text-slate-400 text-[11px] italic">Client App Not Specified</span>
+                              <span className="text-slate-400 text-xs italic">Application not assigned</span>
                             )}
                           </div>
                         ) : (
                           <div className="space-y-1">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                              Can Create &amp; Manage Clients For:
-                            </span>
-                            <div className="flex items-center gap-1 flex-wrap max-w-xs">
-                              {(u.assignedApplications || []).length === 0 ? (
-                                <span className="text-rose-600 text-[10px] font-bold">No Applications Assigned</span>
-                              ) : (
-                                (u.assignedApplications || []).map((code) => {
+                            {(u.assignedApplications || []).length === 0 ? (
+                              <span className="inline-block px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold">
+                                No Applications Assigned (Cannot create clients)
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-1.5 flex-wrap max-w-sm">
+                                {(u.assignedApplications || []).map((code) => {
                                   const app = applications.find(a => a.appCode === code);
                                   return (
                                     <span
                                       key={code}
-                                      className="px-2 py-0.5 bg-emerald-50 text-emerald-800 rounded text-[10px] font-black border border-emerald-200"
+                                      className="px-2 py-0.5 bg-emerald-50 text-emerald-800 rounded-md text-[10px] font-black border border-emerald-200/80"
                                     >
                                       {app?.name || code}
                                     </span>
                                   );
-                                })
-                              )}
-                            </div>
+                                })}
+                              </div>
+                            )}
                           </div>
                         )}
                       </td>
 
-                      {/* Allowed Screens */}
-                      <td className="px-4 py-3.5">
+                      {/* Screen Permissions */}
+                      <td className="px-5 py-4">
                         {isSuper ? (
-                          <div className="flex items-center gap-1 text-amber-800 font-bold text-[11px]">
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200/80 text-xs font-bold">
                             <Icon name="check" className="w-3.5 h-3.5 text-amber-600" />
-                            <span>All Screens (Full Access)</span>
+                            <span>All Screens ({modules.length} Pages)</span>
                           </div>
                         ) : (
                           <div className="space-y-1">
-                            <span className="text-[11px] font-bold text-slate-800">
+                            <span className="text-xs font-bold text-slate-800">
                               {(u.allowedPages || []).length} / {modules.length} screens
                             </span>
                             <div className="flex items-center gap-1 flex-wrap max-w-xs">
@@ -639,48 +690,55 @@ export default function Users() {
                       </td>
 
                       {/* Active Status */}
-                      <td className="px-4 py-3.5 text-center">
+                      <td className="px-5 py-4 text-center">
                         <button
                           onClick={() => handleToggleStatus(u)}
                           disabled={u.isPermanentSuperAdmin}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase transition ${
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase transition shadow-2xs ${
                             u.isActive
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 hover:bg-emerald-200'
-                              : 'bg-rose-100 text-rose-800 border border-rose-200 hover:bg-rose-200'
-                          } ${u.isPermanentSuperAdmin ? 'opacity-70 cursor-not-allowed' : ''}`}
-                          title={u.isPermanentSuperAdmin ? 'Primary Super Admin cannot be deactivated' : 'Click to toggle status'}
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                          } ${u.isPermanentSuperAdmin ? 'opacity-70 cursor-not-allowed' : 'active:scale-95'}`}
+                          title={u.isPermanentSuperAdmin ? 'Primary Super Admin cannot be deactivated' : 'Click to toggle active status'}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                          <span>{u.isActive ? 'Active' : 'Deactivated'}</span>
+                          <span>{u.isActive ? 'Active' : 'Inactive'}</span>
                         </button>
                       </td>
 
                       {/* Actions */}
-                      <td className="px-4 py-3.5 text-right">
+                      <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => openEditModal(u)}
-                            className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
-                            title="Edit Permissions &amp; Applications"
+                            className="p-2 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition"
+                            title="Edit Permissions &amp; Assigned Applications"
                           >
-                            <Icon name="edit" className="w-4 h-4" />
+                            <Icon name="edit" className="w-3.5 h-3.5" />
                           </button>
 
                           <button
                             onClick={() => openPasswordModal(u)}
-                            className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
-                            title="Reset Password"
+                            className="p-2 text-slate-600 hover:text-amber-700 bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-200 rounded-lg transition"
+                            title="Reset User Password"
                           >
-                            <Icon name="key" className="w-4 h-4" />
+                            <Icon name="key" className="w-3.5 h-3.5" />
                           </button>
 
-                          {!u.isPermanentSuperAdmin && (
+                          {u.isPermanentSuperAdmin ? (
+                            <span
+                              className="p-2 text-slate-300 cursor-not-allowed"
+                              title="Primary Super Admin cannot be deleted"
+                            >
+                              <Icon name="shield" className="w-3.5 h-3.5" />
+                            </span>
+                          ) : (
                             <button
                               onClick={() => handleDeleteUser(u)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                              className="p-2 text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 rounded-lg transition"
                               title="Delete Account"
                             >
-                              <Icon name="trash" className="w-4 h-4" />
+                              <Icon name="trash" className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
