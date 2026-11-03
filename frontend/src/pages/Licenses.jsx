@@ -4,6 +4,7 @@ import api from '../api.js';
 import { buildCustomerUrl, appSlugForProduct, appPortForProduct, backendPortForProduct } from '../utils/customerUrl.js';
 import Modal from '../components/Modal.jsx';
 import SplitDivider from '../components/SplitDivider.jsx';
+import WalletLedgerModal from '../components/WalletLedgerModal.jsx';
 import { Icon } from '../components/icons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSnackbar } from '../context/SnackbarContext.jsx';
@@ -132,6 +133,8 @@ export default function Licenses() {
   const { showSnackbar = () => {}, confirmDialog = async () => true } = useSnackbar() || {};
   const [clients, setClients] = useState([]);
   const [apps, setApps] = useState([]);
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [walletClient, setWalletClient] = useState(null);
 
   // If user is an Admin (not Super Admin), only show applications assigned to them by Super Admin
   const userPermittedApps = (user && !isSuperAdmin && Array.isArray(user.assignedApplications) && user.assignedApplications.length > 0)
@@ -1055,6 +1058,28 @@ export default function Licenses() {
                           <div className="text-[10px] text-slate-400 font-mono truncate max-w-[170px]">
                             {buildCustomerUrl(c).replace('https://', '')}
                           </div>
+                          {(c.softwareProduct === 'WA_INSTA_AUTOMATION' || c.wallet?.totalRecharged > 0 || c.wallet?.balance > 0) && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setWalletClient(c);
+                                setWalletModalOpen(true);
+                              }}
+                              className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border transition bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                              title="Open WhatsApp Prepaid Wallet & Message Credit Studio"
+                            >
+                              <span>💳</span>
+                              {c.wallet?.allowWithoutBalance ? (
+                                <span className="text-amber-600 dark:text-amber-400 font-extrabold">⚡ Bypass: No Balance Req.</span>
+                              ) : (
+                                <span>
+                                  ₹{Number(c.wallet?.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })} (
+                                  {Math.floor((c.wallet?.balance || 0) / (c.wallet?.messageRate || 0.90)).toLocaleString('en-IN')} msgs)
+                                </span>
+                              )}
+                            </button>
+                          )}
                         </td>
 
                         {/* Col 2: Status */}
@@ -1089,6 +1114,18 @@ export default function Licenses() {
                         {/* Col 4: Row Actions */}
                         <td className="py-2.5 px-2 align-top text-right" onClick={e => e.stopPropagation()}>
                           <div className="inline-flex items-center gap-1">
+                            {(c.softwareProduct === 'WA_INSTA_AUTOMATION' || c.wallet?.totalRecharged > 0) && (
+                              <button
+                                onClick={() => {
+                                  setWalletClient(c);
+                                  setWalletModalOpen(true);
+                                }}
+                                className="p-1 text-emerald-600 hover:bg-emerald-50 rounded transition text-xs"
+                                title="Open WhatsApp Wallet Studio"
+                              >
+                                💳
+                              </button>
+                            )}
                             {(c.isTrial || c.licenseStatus === 'trial') && (
                               <button
                                 onClick={() => handleOpenConvertModal(c)}
@@ -2869,6 +2906,14 @@ export default function Licenses() {
           </form>
         </Modal>
       )}
+
+      {/* Enterprise WhatsApp Prepaid Wallet & Message Credit Studio */}
+      <WalletLedgerModal
+        isOpen={walletModalOpen}
+        onClose={() => setWalletModalOpen(false)}
+        client={walletClient}
+        onWalletUpdated={fetchData}
+      />
     </div>
   );
 }

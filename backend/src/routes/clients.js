@@ -46,7 +46,13 @@ const broadcastOtaUpdateToTenant = async (client) => {
       businessType: client.businessType || '',
       solutionMode: client.solutionMode || '',
       solutionModes: client.solutionModes || [],
-      customTerminology: client.customTerminology || {}
+      customTerminology: client.customTerminology || {},
+      // Enterprise WhatsApp Wallet State
+      walletBalance: client.wallet?.balance || 0,
+      messageRate: client.wallet?.messageRate || 0.90,
+      availableCredits: Math.floor((client.wallet?.balance || 0) / (client.wallet?.messageRate || 0.90)),
+      allowWithoutBalance: !!client.wallet?.allowWithoutBalance,
+      lowBalanceThreshold: client.wallet?.lowBalanceThreshold || 200
     };
 
     // 1. Sync local License record

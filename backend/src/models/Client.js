@@ -231,6 +231,26 @@ const clientSchema = new mongoose.Schema({
     appVersion: { type: String, default: '1.0.0' }
   },
 
+  // Enterprise WhatsApp Prepaid Wallet & Message Credit Control
+  wallet: {
+    balance: { type: Number, default: 0 },
+    messageRate: { type: Number, default: 0.90 }, // Price in Rupees (e.g. 0.90 = 90 paise)
+    currency: { type: String, default: 'INR' },
+    allowWithoutBalance: { type: Boolean, default: false }, // Super Admin only: Send without money
+    allowWithoutBalanceChangedAt: { type: Date },
+    allowWithoutBalanceChangedBy: { type: String, default: '' },
+    totalRecharged: { type: Number, default: 0 },
+    totalSpent: { type: Number, default: 0 },
+    totalMessagesSent: { type: Number, default: 0 },
+    lowBalanceThreshold: { type: Number, default: 200 },
+    autoStopOnZero: { type: Boolean, default: true },
+    rateHistory: [{
+      rate: { type: Number },
+      changedAt: { type: Date, default: Date.now },
+      changedBy: { type: String, default: 'Super Admin' }
+    }]
+  },
+
   lastSyncStatus: {
     type: String,
     enum: ['synced', 'failed', 'pending'],
