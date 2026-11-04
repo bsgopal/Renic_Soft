@@ -95,6 +95,50 @@ router.get('/overview', async (req, res) => {
   }
 });
 
+router.get('/client/:customerCode', async (req, res) => {
+  try {
+    const { customerCode } = req.params;
+    const cleanCode = (customerCode || '').toLowerCase().trim();
+    const client = await Client.findOne({
+      $or: [
+        { customerCode: cleanCode },
+        { subdomain: cleanCode },
+        { shopSlug: cleanCode }
+      ]
+    });
+    if (!client) {
+      return res.status(404).json({ success: false, message: 'Client not found' });
+    }
+    const rate = Number(client.wallet?.messageRate || 0.90);
+    const balance = Number(client.wallet?.balance || 0);
+    const availableCredits = rate > 0 ? Math.floor(balance / rate) : 0;
+    const allowWithoutBalance = !!client.wallet?.allowWithoutBalance;
+
+    res.json({
+      success: true,
+      client: {
+        _id: client._id,
+        name: client.name,
+        customerCode: client.customerCode,
+        mobile: client.pendingOwnerMobile || client.contact,
+        email: client.pendingOwnerEmail
+      },
+      wallet: {
+        balance,
+        messageRate: rate,
+        availableCredits,
+        allowWithoutBalance,
+        lowBalanceThreshold: client.wallet?.lowBalanceThreshold || 200,
+        totalRecharged: client.wallet?.totalRecharged || 0,
+        totalSpent: client.wallet?.totalSpent || 0,
+        totalMessagesSent: client.wallet?.totalMessagesSent || 0
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.get('/:clientId/ledger', async (req, res) => {
   try {
     const { clientId } = req.params;

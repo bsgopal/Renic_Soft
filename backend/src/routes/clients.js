@@ -617,6 +617,16 @@ router.post('/', protect, authorize('platform_owner', 'admin'), async (req, res)
       pendingOwnerMobile: effectiveMobile,
       pendingOwnerPassword: hashedPassword,
       pendingOwnerRole: 'admin',
+      wallet: {
+        balance: Number(req.body.walletBalance || req.body.wallet?.balance || 0),
+        messageRate: Number(req.body.messageRate || req.body.wallet?.messageRate || 0.90),
+        currency: 'INR',
+        allowWithoutBalance: req.body.allowWithoutBalance !== undefined 
+          ? Boolean(req.body.allowWithoutBalance) 
+          : (req.body.wallet?.allowWithoutBalance !== undefined ? Boolean(req.body.wallet.allowWithoutBalance) : false),
+        allowWithoutBalanceChangedAt: new Date(),
+        allowWithoutBalanceChangedBy: `${req.user?.name || 'Super Admin'} (${req.user?.mobile || '9345578103'})`
+      },
       telemetry: {
         whatsappStatus: 'unknown',
         monthlyMessagesSent: 0,
@@ -875,6 +885,20 @@ router.put('/:id', protect, authorize('platform_owner', 'admin'), async (req, re
     if (req.body.wahaApiKey !== undefined) client.wahaApiKey = (req.body.wahaApiKey || '').trim();
     if (req.body.wahaSessionName !== undefined) client.wahaSessionName = (req.body.wahaSessionName || 'default').trim();
     if (req.body.oauthEnforced !== undefined) client.oauthEnforced = Boolean(req.body.oauthEnforced);
+    if (req.body.allowWithoutBalance !== undefined || req.body.wallet?.allowWithoutBalance !== undefined) {
+      if (!client.wallet) {
+        client.wallet = { balance: 0, messageRate: 0.90, currency: 'INR' };
+      }
+      const newBypass = req.body.allowWithoutBalance !== undefined 
+        ? Boolean(req.body.allowWithoutBalance) 
+        : Boolean(req.body.wallet?.allowWithoutBalance);
+      
+      if (client.wallet.allowWithoutBalance !== newBypass) {
+        client.wallet.allowWithoutBalance = newBypass;
+        client.wallet.allowWithoutBalanceChangedAt = new Date();
+        client.wallet.allowWithoutBalanceChangedBy = `${req.user?.name || 'Super Admin'} (${req.user?.mobile || '9345578103'})`;
+      }
+    }
     if (req.body.clientId && req.body.clientId.trim()) client.clientId = req.body.clientId.trim();
     if (req.body.clientSecret && req.body.clientSecret.trim()) {
       client.clientSecret = req.body.clientSecret.trim();

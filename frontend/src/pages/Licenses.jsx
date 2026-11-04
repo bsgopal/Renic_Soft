@@ -47,6 +47,7 @@ const DEFAULT_SHOP = {
     allowStaffProfitView: false
   },
   oauthEnforced: true,
+  allowWithoutBalance: false,
   clientId: '',
   clientSecret: '',
   screenPermissions: {},
@@ -518,7 +519,8 @@ export default function Licenses() {
       dockerThrottleSeconds: clientObj.dockerThrottleSeconds || 6,
       wahaApiUrl: clientObj.wahaApiUrl || '',
       wahaApiKey: clientObj.wahaApiKey || '',
-      wahaSessionName: clientObj.wahaSessionName || 'default'
+      wahaSessionName: clientObj.wahaSessionName || 'default',
+      allowWithoutBalance: !!clientObj.wallet?.allowWithoutBalance
     });
 
     setWizardOpen(true);
@@ -1643,6 +1645,60 @@ export default function Licenses() {
                   >
                     {wizardForm.oauthEnforced ? 'YES' : 'NO'}
                   </button>
+                </div>
+
+                {/* Super Admin WhatsApp Prepaid Wallet & Message Bypass Governance */}
+                <div className="p-3.5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="p-2 bg-amber-500 text-slate-950 font-bold rounded-lg text-sm mt-0.5">
+                      ⚡
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900">
+                          Allow Sending Without Wallet (Super Admin Decided)
+                        </span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                          wizardForm.allowWithoutBalance 
+                            ? 'bg-amber-400 text-slate-950' 
+                            : 'bg-slate-200 text-slate-700'
+                        }`}>
+                          {wizardForm.allowWithoutBalance ? 'Free Bypass Active' : 'Prepaid Balance Required'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-0.5">
+                        {wizardForm.allowWithoutBalance 
+                          ? 'Client is authorized to send WhatsApp campaigns & messages even with ₹0 wallet balance.'
+                          : 'Standard prepaid gate: Client must maintain positive wallet balance to dispatch WhatsApp messages.'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedClient && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWalletClient(selectedClient);
+                          setWalletModalOpen(true);
+                        }}
+                        className="px-3 py-1 text-xs font-bold text-indigo-700 hover:text-indigo-900 underline whitespace-nowrap cursor-pointer"
+                        title="View Audit Ledger & Top-up"
+                      >
+                        Ledger ↗
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setWizardForm({ ...wizardForm, allowWithoutBalance: !wizardForm.allowWithoutBalance })}
+                      className={`px-3.5 py-1.5 text-xs font-bold rounded-lg border transition whitespace-nowrap cursor-pointer ${
+                        wizardForm.allowWithoutBalance
+                          ? 'bg-amber-500 text-slate-950 border-amber-600 hover:bg-amber-400 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      {wizardForm.allowWithoutBalance ? '⚡ Disable Bypass' : 'Allow Without Wallet'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
