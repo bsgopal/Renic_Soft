@@ -803,7 +803,7 @@ export default function Licenses() {
     ? wizardForm.fullSaaSDomain
     : (knownFrontendBase ? `${knownFrontendBase.replace(/\/+$/, '')}?tenant=${cleanCustomerCode}` : computedSmartUrl);
 
-  const localDevUrl = `http://localhost:${currentWizardPort}`;
+  const localDevUrl = `http://localhost:${currentWizardPort}/?tenant=${cleanCustomerCode}`;
   const localLvhUrl = `http://${smartAppSlug}.${cleanCustomerCode}.lvh.me:${currentWizardPort}`;
   const localGatewayUrl = `http://${smartAppSlug}.${cleanCustomerCode}.lvh.me:5050`;
   const cloudflareTunnelCmd = `cloudflared tunnel --url http://localhost:${currentWizardPort}`;
@@ -1057,8 +1057,27 @@ export default function Licenses() {
                           <div className="text-[11px] text-slate-500 font-medium truncate max-w-[170px] mt-0.5">
                             {appObj?.name || c.softwareProduct}
                           </div>
-                          <div className="text-[10px] text-slate-400 font-mono truncate max-w-[170px]">
-                            {buildCustomerUrl(c).replace('https://', '')}
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <a
+                              href={buildCustomerUrl(c)}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[10px] text-indigo-600 hover:text-indigo-800 font-mono truncate max-w-[130px] hover:underline"
+                              title={`Open Cloud Production URL: ${buildCustomerUrl(c)}`}
+                            >
+                              🌐 {buildCustomerUrl(c).replace('https://', '')}
+                            </a>
+                            <a
+                              href={`http://localhost:${appPortForProduct(c.softwareProduct)}/?tenant=${c.customerCode || c.subdomain || c.shopSlug}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-lime-100 text-lime-900 hover:bg-lime-200 border border-lime-300 shrink-0 inline-flex items-center gap-0.5"
+                              title={`Run locally on http://localhost:${appPortForProduct(c.softwareProduct)}/?tenant=${c.customerCode || c.subdomain || c.shopSlug} (Cloud remains untouched)`}
+                            >
+                              <span>💻</span> Local
+                            </a>
                           </div>
                           {(c.softwareProduct === 'WA_INSTA_AUTOMATION' || c.wallet?.totalRecharged > 0 || c.wallet?.balance > 0) && (
                             <button
@@ -1812,70 +1831,56 @@ export default function Licenses() {
                     </div>
                   </div>
 
-                  {/* 2. Localhost & lvh.me Development Loopback (Commented out per user request) */}
-                  {/*
-                  <div className="p-3 bg-lime-50/70 border border-lime-200 rounded-lg text-xs space-y-2">
+                  {/* 2. Localhost Development Loopback */}
+                  <div className="p-3 bg-lime-50/80 border border-lime-300 rounded-lg text-xs space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-lime-900 flex items-center gap-1.5">
-                        💻 Local Development &amp; Loopback URLs (Ready Now):
+                      <span className="font-bold text-lime-950 flex items-center gap-1.5">
+                        💻 Run Client Locally (Cloud Remains Active &amp; Untouched):
                       </span>
-                      <span className="text-[10px] text-lime-700 font-semibold">Works immediately on 127.0.0.1</span>
+                      <span className="text-[10px] text-lime-800 font-semibold px-2 py-0.5 bg-lime-200 rounded-full">Port :{currentWizardPort}</span>
                     </div>
+                    <p className="text-[11px] text-lime-900 leading-relaxed">
+                      Launch and test this client tenant directly on your local Vite dev server without disturbing the live cloud URL:
+                    </p>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <div className="bg-white p-2 rounded border border-lime-200 flex flex-col justify-between">
-                        <div className="mb-1.5">
-                          <span className="text-[10px] text-slate-400 block font-sans">Direct Localhost:</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="bg-white p-2.5 rounded-lg border border-lime-200 flex flex-col justify-between shadow-2xs">
+                        <div className="mb-2">
+                          <span className="text-[10px] text-slate-400 block font-sans">Direct Local Client URL:</span>
                           <span className="font-mono text-[11px] text-lime-950 font-bold truncate block">{localDevUrl}</span>
                         </div>
-                        <a
-                          href={localDevUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-2 py-1 text-center text-[11px] font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-2xs"
-                        >
-                          Open Direct 🚀
-                        </a>
-                      </div>
-
-                      <div className="bg-white p-2 rounded border border-lime-200 flex flex-col justify-between">
-                        <div className="mb-1.5">
-                          <span className="text-[10px] text-slate-400 block font-sans">Tenant Direct URL:</span>
-                          <span className="font-mono text-[11px] text-lime-950 font-bold truncate block">{localLvhUrl}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <CopyBtn text={localLvhUrl} showLabel={false} className="!p-1" />
+                        <div className="flex items-center gap-1.5">
+                          <CopyBtn text={localDevUrl} showLabel={false} className="!p-1.5" />
                           <a
-                            href={localLvhUrl}
+                            href={localDevUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex-1 text-center px-2 py-1 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                            className="flex-1 px-2.5 py-1.5 text-center text-[11px] font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-2xs transition"
                           >
-                            Open ↗
+                            Open Local Client 🚀
                           </a>
                         </div>
                       </div>
 
-                      <div className="bg-white p-2 rounded border border-lime-200 flex flex-col justify-between">
-                        <div className="mb-1.5">
-                          <span className="text-[10px] text-slate-400 block font-sans">Renic Soft Gateway (:5050):</span>
-                          <span className="font-mono text-[11px] text-lime-950 font-bold truncate block">{localGatewayUrl}</span>
+                      <div className="bg-white p-2.5 rounded-lg border border-lime-200 flex flex-col justify-between shadow-2xs">
+                        <div className="mb-2">
+                          <span className="text-[10px] text-slate-400 block font-sans">Local Subdomain (lvh.me):</span>
+                          <span className="font-mono text-[11px] text-lime-950 font-bold truncate block">{localLvhUrl}</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <CopyBtn text={localGatewayUrl} showLabel={false} className="!p-1" />
+                        <div className="flex items-center gap-1.5">
+                          <CopyBtn text={localLvhUrl} showLabel={false} className="!p-1.5" />
                           <a
-                            href={localGatewayUrl}
+                            href={localLvhUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex-1 text-center px-2 py-1 text-[11px] font-bold text-indigo-900 bg-indigo-50 hover:bg-indigo-100 rounded-lg"
+                            className="flex-1 text-center px-2.5 py-1.5 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
                           >
-                            Gateway ↗
+                            Open Subdomain ↗
                           </a>
                         </div>
                       </div>
                     </div>
                   </div>
-                  */}
 
                   {/* 3. Cloudflare Tunnel Integration (Commented out per user request) */}
                   {/*
