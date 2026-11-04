@@ -40,6 +40,7 @@ export default function WalletLedgerModal({ isOpen, onClose, client, onWalletUpd
 
   // Bypass Toggle State
   const [togglingBypass, setTogglingBypass] = useState(false);
+  const [isFullWidth, setIsFullWidth] = useState(true);
 
   const fetchLedger = useCallback(async (page = 1) => {
     if (!client?._id) return;
@@ -238,7 +239,6 @@ export default function WalletLedgerModal({ isOpen, onClose, client, onWalletUpd
   const currentBalance = wallet?.balance || 0;
   const availableMessages = currentRate > 0 ? Math.floor(currentBalance / currentRate) : 0;
   const isBypassActive = !!wallet?.allowWithoutBalance;
-  const [isFullWidth, setIsFullWidth] = useState(true);
 
   // Dynamic preview for recharge modal
   const rechargePreviewAmount = parseFloat(rechargeAmount) || 0;
