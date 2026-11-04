@@ -875,7 +875,7 @@ export default function ApplicationHub() {
 
           {/* Form */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/60">
-            <form onSubmit={handleRegisterApp} className="space-y-4 max-w-2xl bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+            <form onSubmit={handleRegisterApp} className="space-y-4 w-full bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Application Name *</label>
@@ -1431,7 +1431,7 @@ export default function ApplicationHub() {
 
             {/* TAB 4: Edit App Settings */}
             {activeTab === 'edit' && (
-              <form onSubmit={handleUpdateApp} className="space-y-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs max-w-2xl">
+              <form onSubmit={handleUpdateApp} className="space-y-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs w-full">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Application Name *</label>
