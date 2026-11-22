@@ -138,7 +138,7 @@ export default function Settings() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full w-full bg-[#f4f6f8] text-slate-400">
-        <Icon name="refresh" className="w-6 h-6 animate-spin text-[#65a30d] mr-2" />
+        <Icon name="refresh" className="w-6 h-6 animate-spin text-[#4338ca] mr-2" />
         <span className="font-semibold text-xs">Loading Master HQ settings...</span>
       </div>
     );
@@ -151,14 +151,14 @@ export default function Settings() {
       <div className="px-3.5 py-2 bg-white border-b border-slate-200 flex-shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#84cc16] flex items-center justify-center font-bold flex-shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#4f46e5] flex items-center justify-center font-bold flex-shrink-0">
               <Icon name="settings" className="w-3.5 h-3.5" />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-sm font-black text-slate-900 tracking-tight">
                 Master HQ Settings &amp; Governance
               </h1>
-              <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-slate-900 text-lime-400 font-mono">
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-slate-900 text-[#818cf8] font-mono">
                 v2.4
               </span>
             </div>
@@ -168,7 +168,7 @@ export default function Settings() {
             <button
               onClick={handleSaveCompany}
               disabled={saving}
-              className="inline-flex items-center gap-1 px-3 py-1 bg-[#84cc16] hover:bg-[#72b012] text-[#0f172a] font-bold text-xs rounded-lg shadow-2xs transition"
+              className="inline-flex items-center gap-1 px-3 py-1 bg-[#4f46e5] hover:bg-[#72b012] text-[#0f172a] font-bold text-xs rounded-lg shadow-2xs transition"
             >
               <Icon name="check" className="w-3.5 h-3.5 stroke-[2.5]" />
               {saving ? 'Saving...' : 'Save Preferences'}
@@ -186,7 +186,7 @@ export default function Settings() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`py-1 px-2.5 rounded-md transition-all whitespace-nowrap flex items-center gap-1 text-xs ${
                   isActive
-                    ? 'bg-[#0f172a] text-[#84cc16] font-bold shadow-2xs'
+                    ? 'bg-[#0f172a] text-[#4f46e5] font-bold shadow-2xs'
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                 }`}
               >
@@ -219,7 +219,7 @@ export default function Settings() {
                     value={companyForm.name}
                     onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })}
                     placeholder="e.g. Renic Soft Tech Private Limited"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white font-medium"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white font-medium"
                   />
                 </div>
 
@@ -231,7 +231,7 @@ export default function Settings() {
                     value={companyForm.gst}
                     onChange={(e) => setCompanyForm({ ...companyForm, gst: e.target.value.toUpperCase() })}
                     placeholder="e.g. 29AAAAA0000A1Z5"
-                    className="w-full px-3 py-2 text-xs font-mono font-bold rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                    className="w-full px-3 py-2 text-xs font-mono font-bold rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                   />
                 </div>
               </div>
@@ -244,7 +244,7 @@ export default function Settings() {
                   value={companyForm.address}
                   onChange={(e) => setCompanyForm({ ...companyForm, address: e.target.value })}
                   placeholder="Street Address, Building, Floor..."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                 />
               </div>
 
@@ -256,7 +256,7 @@ export default function Settings() {
                     value={companyForm.city}
                     onChange={(e) => setCompanyForm({ ...companyForm, city: e.target.value })}
                     placeholder="e.g. Bangalore"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                   />
                 </div>
 
@@ -267,7 +267,7 @@ export default function Settings() {
                     value={companyForm.state}
                     onChange={(e) => setCompanyForm({ ...companyForm, state: e.target.value })}
                     placeholder="e.g. Karnataka"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                   />
                 </div>
 
@@ -278,7 +278,7 @@ export default function Settings() {
                     value={companyForm.pincode}
                     onChange={(e) => setCompanyForm({ ...companyForm, pincode: e.target.value })}
                     placeholder="e.g. 560001"
-                    className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                    className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                   />
                 </div>
               </div>
@@ -291,7 +291,7 @@ export default function Settings() {
                     value={companyForm.phone}
                     onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
                     placeholder="+91 93455 78103"
-                    className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                    className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                   />
                 </div>
 
@@ -302,7 +302,7 @@ export default function Settings() {
                     value={companyForm.email}
                     onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })}
                     placeholder="contact@renic.store"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                   />
                 </div>
 
@@ -313,7 +313,7 @@ export default function Settings() {
                     value={companyForm.website}
                     onChange={(e) => setCompanyForm({ ...companyForm, website: e.target.value })}
                     placeholder="https://renic.store"
-                    className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                    className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                   />
                 </div>
               </div>
@@ -322,7 +322,7 @@ export default function Settings() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 text-xs font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-xs transition"
+                  className="px-5 py-2 text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded-lg shadow-sm transition"
                 >
                   {saving ? 'Saving...' : 'Save Company Profile'}
                 </button>
@@ -332,7 +332,7 @@ export default function Settings() {
 
           {/* TAB 2: Banking & Invoicing Clauses */}
           {activeTab === 'banking' && (
-            <form onSubmit={handleSaveCompany} className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-4">
+            <form onSubmit={handleSaveCompany} className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
               <div className="border-b border-slate-100 pb-3">
                 <h3 className="text-sm font-bold text-slate-900">Banking Details &amp; Commercial Terms</h3>
                 <p className="text-xs text-slate-500">
@@ -348,7 +348,7 @@ export default function Settings() {
                     value={companyForm.bankName}
                     onChange={(e) => setCompanyForm({ ...companyForm, bankName: e.target.value })}
                     placeholder="e.g. HDFC Bank Ltd"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                   />
                 </div>
 
@@ -359,7 +359,7 @@ export default function Settings() {
                     value={companyForm.accountNumber}
                     onChange={(e) => setCompanyForm({ ...companyForm, accountNumber: e.target.value })}
                     placeholder="e.g. 50200088991122"
-                    className="w-full px-3 py-2 text-xs font-mono font-bold rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                    className="w-full px-3 py-2 text-xs font-mono font-bold rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                   />
                 </div>
               </div>
@@ -372,7 +372,7 @@ export default function Settings() {
                     value={companyForm.ifscCode}
                     onChange={(e) => setCompanyForm({ ...companyForm, ifscCode: e.target.value.toUpperCase() })}
                     placeholder="e.g. HDFC0001234"
-                    className="w-full px-3 py-2 text-xs font-mono font-bold rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                    className="w-full px-3 py-2 text-xs font-mono font-bold rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                   />
                 </div>
 
@@ -383,7 +383,7 @@ export default function Settings() {
                     value={companyForm.branchName}
                     onChange={(e) => setCompanyForm({ ...companyForm, branchName: e.target.value })}
                     placeholder="e.g. Bangalore Main Branch"
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                   />
                 </div>
 
@@ -394,7 +394,7 @@ export default function Settings() {
                     value={companyForm.upiId}
                     onChange={(e) => setCompanyForm({ ...companyForm, upiId: e.target.value })}
                     placeholder="e.g. renicsoft@hdfcbank"
-                    className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                    className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                   />
                 </div>
               </div>
@@ -406,7 +406,7 @@ export default function Settings() {
                   value={companyForm.paymentDetails}
                   onChange={(e) => setCompanyForm({ ...companyForm, paymentDetails: e.target.value })}
                   placeholder="Advance payment required to confirm order..."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white leading-relaxed"
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white leading-relaxed"
                 />
               </div>
 
@@ -417,7 +417,7 @@ export default function Settings() {
                   value={companyForm.termsConditions}
                   onChange={(e) => setCompanyForm({ ...companyForm, termsConditions: e.target.value })}
                   placeholder="1. Quotation validity is 14 days..."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white leading-relaxed"
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white leading-relaxed"
                 />
               </div>
 
@@ -425,7 +425,7 @@ export default function Settings() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 text-xs font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-xs transition"
+                  className="px-5 py-2 text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded-lg shadow-sm transition"
                 >
                   {saving ? 'Saving...' : 'Save Banking & Terms'}
                 </button>
@@ -437,7 +437,7 @@ export default function Settings() {
           {activeTab === 'security' && (
             <div className="space-y-6">
               {/* Profile Card */}
-              <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-4">
+              <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                 <div className="border-b border-slate-100 pb-3">
                   <h3 className="text-sm font-bold text-slate-900">Current Administrator Identity</h3>
                   <p className="text-xs text-slate-500">
@@ -464,7 +464,7 @@ export default function Settings() {
               </div>
 
               {/* Password Change Form */}
-              <form onSubmit={handleChangePassword} className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-4">
+              <form onSubmit={handleChangePassword} className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
                 <div className="border-b border-slate-100 pb-3">
                   <h3 className="text-sm font-bold text-slate-900">Change Master Password</h3>
                   <p className="text-xs text-slate-500">
@@ -481,7 +481,7 @@ export default function Settings() {
                       value={pwForm.currentPassword}
                       onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })}
                       placeholder="Enter current password"
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                     />
                   </div>
 
@@ -494,7 +494,7 @@ export default function Settings() {
                       value={pwForm.newPassword}
                       onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
                       placeholder="Enter strong new password"
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                     />
                   </div>
 
@@ -507,7 +507,7 @@ export default function Settings() {
                       value={pwForm.confirmPassword}
                       onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })}
                       placeholder="Re-enter new password"
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                     />
                   </div>
                 </div>
@@ -516,7 +516,7 @@ export default function Settings() {
                   <button
                     type="submit"
                     disabled={pwSubmitting}
-                    className="px-5 py-2 text-xs font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-xs transition"
+                    className="px-5 py-2 text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded-lg shadow-sm transition"
                   >
                     {pwSubmitting ? 'Updating Password...' : 'Update Master Password'}
                   </button>
@@ -527,7 +527,7 @@ export default function Settings() {
 
           {/* TAB 4: SaaS Fleet Governance */}
           {activeTab === 'fleet' && (
-            <form onSubmit={handleSaveCompany} className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-4">
+            <form onSubmit={handleSaveCompany} className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
               <div className="border-b border-slate-100 pb-3">
                 <h3 className="text-sm font-bold text-slate-900">Multi-Tenant Fleet Governance</h3>
                 <p className="text-xs text-slate-500">
@@ -542,7 +542,7 @@ export default function Settings() {
                     type="number"
                     value={companyForm.defaultTrialDays}
                     onChange={(e) => setCompanyForm({ ...companyForm, defaultTrialDays: Number(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs font-mono font-bold rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white"
+                    className="w-full px-3 py-2 text-xs font-mono font-bold rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white"
                   />
                   <p className="text-[10px] text-slate-400 mt-1">Number of trial days assigned when onboarding new tenant instances.</p>
                 </div>
@@ -565,7 +565,7 @@ export default function Settings() {
                     type="checkbox"
                     checked={companyForm.otaAutoSync}
                     onChange={(e) => setCompanyForm({ ...companyForm, otaAutoSync: e.target.checked })}
-                    className="rounded border-slate-300 text-[#84cc16] focus:ring-[#84cc16] w-4 h-4"
+                    className="rounded border-slate-300 text-[#4f46e5] focus:ring-[#4f46e5] w-4 h-4"
                   />
                   <span>Automatic Over-The-Air (OTA) Push Sync on License Modification</span>
                 </label>
@@ -578,7 +578,7 @@ export default function Settings() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 text-xs font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-xs transition"
+                  className="px-5 py-2 text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded-lg shadow-sm transition"
                 >
                   {saving ? 'Saving...' : 'Save Fleet Preferences'}
                 </button>
@@ -588,7 +588,7 @@ export default function Settings() {
 
           {/* TAB 5: System Telemetry & Health */}
           {activeTab === 'diagnostics' && (
-            <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-xs space-y-5">
+            <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
               <div className="border-b border-slate-100 pb-3">
                 <h3 className="text-sm font-bold text-slate-900">Platform Telemetry &amp; Runtime Health</h3>
                 <p className="text-xs text-slate-500">

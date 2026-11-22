@@ -234,7 +234,7 @@ _Powered by Renic Soft Cloud Gateway_`;
                 placeholder="Search showroom, code, port..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white font-medium"
+                className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white font-medium"
               />
               <span className="absolute left-2.5 top-2 text-slate-400">
                 <Icon name="search" className="w-3.5 h-3.5" />
@@ -246,7 +246,7 @@ _Powered by Renic Soft Cloud Gateway_`;
               className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
               title="Refresh"
             >
-              <Icon name="refresh" className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#65a30d]' : ''}`} />
+              <Icon name="refresh" className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#4338ca]' : ''}`} />
             </button>
           </div>
 
@@ -271,7 +271,7 @@ _Powered by Renic Soft Cloud Gateway_`;
                 {loading ? (
                   <tr>
                     <td colSpan={4} className="py-12 text-center text-slate-400">
-                      <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto text-[#65a30d] mb-2" />
+                      <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto text-[#4338ca] mb-2" />
                       <span>Loading fleet router...</span>
                     </td>
                   </tr>
@@ -296,7 +296,7 @@ _Powered by Renic Soft Cloud Gateway_`;
                         onClick={() => handleSelectClient(c)}
                         className={`cursor-pointer transition select-none ${
                           isSelected
-                            ? 'bg-lime-50/70 border-l-4 border-l-[#84cc16]'
+                            ? 'bg-indigo-50/70 border-l-4 border-l-[#4f46e5]'
                             : 'hover:bg-slate-50 border-l-4 border-l-transparent'
                         }`}
                       >
@@ -377,7 +377,7 @@ _Powered by Renic Soft Cloud Gateway_`;
                   <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-slate-900 text-emerald-400">
                     {selectedFleetClient.customerCode}
                   </span>
-                  <span className="px-2 py-0.5 rounded text-xs font-bold bg-lime-50 text-lime-800 border border-lime-200 font-mono">
+                  <span className="px-2 py-0.5 rounded text-xs font-bold bg-indigo-50 text-[#3730a3] border border-indigo-200 font-mono">
                     {buildCustomerUrlForProduct(selectedFleetClient).replace(/^https?:\/\//, '') || 'URL pending'}
                   </span>
                 </div>
@@ -391,7 +391,7 @@ _Powered by Renic Soft Cloud Gateway_`;
                 <button
                   type="button"
                   onClick={() => setSelectedFleetClient(null)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition shadow-xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition shadow-sm"
                   title="Back to Fleet List"
                 >
                   <Icon name="arrow-left" className="w-3.5 h-3.5" /> Back
@@ -436,11 +436,11 @@ _Powered by Renic Soft Cloud Gateway_`;
                   key={tab.id}
                   onClick={() => setInspectorTab(tab.id)}
                   className={`py-2.5 transition relative whitespace-nowrap ${
-                    isActive ? 'text-[#65a30d] font-bold' : 'text-slate-600 hover:text-slate-900'
+                    isActive ? 'text-[#4338ca] font-bold' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {tab.label}
-                  {isActive && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#84cc16]" />}
+                  {isActive && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#4f46e5]" />}
                 </button>
               );
             })}
@@ -474,7 +474,7 @@ _Powered by Renic Soft Cloud Gateway_`;
                     url: selectedFleetClient.fullSaaSDomain || buildCustomerUrl(selectedFleetClient)
                   }
                 ].map((item, idx) => (
-                  <div key={idx} className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs space-y-2">
+                  <div key={idx} className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-xs text-slate-900">{item.title}</span>
                       <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 text-slate-700">{item.badge}</span>
@@ -506,7 +506,7 @@ _Powered by Renic Soft Cloud Gateway_`;
             )}
 
             {inspectorTab === 'profile' && fleetEditForm && (
-              <form onSubmit={handleSaveFleetEdit} className="space-y-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs w-full">
+              <form onSubmit={handleSaveFleetEdit} className="space-y-4 bg-white p-5 rounded-xl border border-slate-200 shadow-sm w-full">
                 <h4 className="text-xs font-bold text-slate-900 uppercase">Showroom Profile &amp; Contact</h4>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Store / Showroom Name</label>
@@ -514,7 +514,7 @@ _Powered by Renic Soft Cloud Gateway_`;
                     type="text"
                     value={fleetEditForm.name}
                     onChange={(e) => setFleetEditForm({ ...fleetEditForm, name: e.target.value })}
-                    className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
 
@@ -525,7 +525,7 @@ _Powered by Renic Soft Cloud Gateway_`;
                       type="text"
                       value={fleetEditForm.pendingOwnerMobile}
                       onChange={(e) => setFleetEditForm({ ...fleetEditForm, pendingOwnerMobile: e.target.value })}
-                      className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                      className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                     />
                   </div>
                   <div>
@@ -534,7 +534,7 @@ _Powered by Renic Soft Cloud Gateway_`;
                       type="email"
                       value={fleetEditForm.pendingOwnerEmail}
                       onChange={(e) => setFleetEditForm({ ...fleetEditForm, pendingOwnerEmail: e.target.value })}
-                      className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                      className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                     />
                   </div>
                 </div>
@@ -543,7 +543,7 @@ _Powered by Renic Soft Cloud Gateway_`;
                   <button
                     type="submit"
                     disabled={savingEdit}
-                    className="px-5 py-1.5 text-xs font-bold text-white bg-[#84cc16] hover:bg-[#65a30d] rounded shadow-xs"
+                    className="px-5 py-1.5 text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded shadow-sm"
                   >
                     {savingEdit ? 'Saving...' : 'Save Profile'}
                   </button>

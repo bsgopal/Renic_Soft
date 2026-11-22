@@ -198,7 +198,7 @@ export default function ApiCredentialsHub() {
                 placeholder="Search tenant or code..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white font-medium"
+                className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white font-medium"
               />
               <span className="absolute left-2.5 top-2 text-slate-400">
                 <Icon name="search" className="w-3.5 h-3.5" />
@@ -210,7 +210,7 @@ export default function ApiCredentialsHub() {
               className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
               title="Refresh"
             >
-              <Icon name="refresh" className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#65a30d]' : ''}`} />
+              <Icon name="refresh" className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#4338ca]' : ''}`} />
             </button>
           </div>
 
@@ -234,7 +234,7 @@ export default function ApiCredentialsHub() {
                 {loading ? (
                   <tr>
                     <td colSpan={3} className="py-12 text-center text-slate-400">
-                      <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto text-[#65a30d] mb-2" />
+                      <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto text-[#4338ca] mb-2" />
                       <span>Loading API tenants...</span>
                     </td>
                   </tr>
@@ -253,7 +253,7 @@ export default function ApiCredentialsHub() {
                         onClick={() => setSelectedCustomer(c)}
                         className={`cursor-pointer transition select-none ${
                           isSelected
-                            ? 'bg-lime-50/70 border-l-4 border-l-[#84cc16]'
+                            ? 'bg-indigo-50/70 border-l-4 border-l-[#4f46e5]'
                             : 'hover:bg-slate-50 border-l-4 border-l-transparent'
                         }`}
                       >
@@ -274,7 +274,7 @@ export default function ApiCredentialsHub() {
                         <td className="py-2.5 px-3 align-top">
                           <span className={`inline-block px-1.5 py-0.5 text-[10px] font-bold rounded ${
                             c.oauthEnforced
-                              ? 'bg-lime-100 text-lime-900 border border-lime-300'
+                              ? 'bg-indigo-100 text-indigo-900 border border-indigo-300'
                               : 'bg-emerald-100 text-emerald-800'
                           }`}>
                             {c.oauthEnforced ? 'OAuth Enforced' : 'Active'}
@@ -285,7 +285,7 @@ export default function ApiCredentialsHub() {
                         <td className="py-2.5 px-2 align-top text-right" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => handleCopyIntegrationKit(c)}
-                            className="p-1 text-slate-400 hover:text-[#65a30d] hover:bg-lime-50 rounded transition"
+                            className="p-1 text-slate-400 hover:text-[#4338ca] hover:bg-indigo-50 rounded transition"
                             title="Copy JSON Kit"
                           >
                             <Icon name="copy" className="w-3.5 h-3.5" />
@@ -323,7 +323,7 @@ export default function ApiCredentialsHub() {
                   <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-slate-900 text-emerald-400">
                     {selectedCustomer.customerCode}
                   </span>
-                  <span className="px-2 py-0.5 rounded text-xs font-bold bg-lime-50 text-lime-800 border border-lime-200">
+                  <span className="px-2 py-0.5 rounded text-xs font-bold bg-indigo-50 text-[#3730a3] border border-indigo-200">
                     {selectedCustomer.softwareProduct || 'TEXTILE_POS'}
                   </span>
                 </div>
@@ -337,7 +337,7 @@ export default function ApiCredentialsHub() {
                 <button
                   type="button"
                   onClick={() => setSelectedCustomer(null)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition shadow-xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition shadow-sm"
                   title="Back to Customer List"
                 >
                   <Icon name="arrow-left" className="w-3.5 h-3.5" /> Back
@@ -379,19 +379,19 @@ export default function ApiCredentialsHub() {
           {/* Credentials Body */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-slate-50/60">
             {/* SaaS URL Card */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2">
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
               <span className="text-xs font-bold text-slate-600 block uppercase">Dedicated SaaS Hosting URL</span>
-              <div className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs font-bold text-[#65a30d]">
+              <div className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg font-mono text-xs font-bold text-[#4338ca]">
                 <span className="truncate pr-2">{selectedCustomer.hostingUrl}</span>
                 <CopyBtn text={selectedCustomer.hostingUrl} label="Copy URL" />
               </div>
             </div>
 
             {/* OAuth Credentials Card */}
-            <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
+            <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <Icon name="key" className="w-3.5 h-3.5 text-lime-700" /> OAuth 2.0 Machine Keys
+                  <Icon name="key" className="w-3.5 h-3.5 text-[#4338ca]" /> OAuth 2.0 Machine Keys
                 </h3>
                 <button
                   type="button"
@@ -449,7 +449,7 @@ export default function ApiCredentialsHub() {
             </div>
 
             {/* Test Bearer Token */}
-            <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-3">
+            <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-slate-900 uppercase">Live Token Generator &amp; Probe</h3>
                 <button
@@ -488,7 +488,7 @@ export default function ApiCredentialsHub() {
               <button
                 type="button"
                 onClick={() => handleOpenEdit(selectedCustomer)}
-                className="px-4 py-1.5 text-xs font-bold text-white bg-[#84cc16] hover:bg-[#65a30d] rounded shadow-xs transition"
+                className="px-4 py-1.5 text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded shadow-sm transition"
               >
                 Edit SaaS Routes
               </button>

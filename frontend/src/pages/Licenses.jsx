@@ -118,7 +118,7 @@ export function CopyBtn({ text, label = 'Copy', className = '', showLabel = true
       onClick={handleCopy}
       className={`inline-flex items-center justify-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg transition ${
         copied
-          ? 'bg-emerald-600 text-white shadow-xs'
+          ? 'bg-emerald-600 text-white shadow-sm'
           : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
       } ${className}`}
       title={copied ? "Copied to clipboard!" : "Copy to clipboard"}
@@ -941,7 +941,7 @@ export default function Licenses() {
 
             <button
               onClick={handleOpenCreateWizard}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#0f172a] hover:bg-[#1e293b] text-white font-bold text-xs rounded-lg shadow-xs transition"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#0f172a] hover:bg-[#1e293b] text-white font-bold text-xs rounded-lg shadow-sm transition"
             >
               <Icon name="plus" className="w-3.5 h-3.5 stroke-[2.5]" /> Launch Instance
             </button>
@@ -1013,7 +1013,7 @@ export default function Licenses() {
                 {loading ? (
                   <tr>
                     <td colSpan={4} className="py-12 text-center text-slate-400">
-                      <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto text-[#65a30d] mb-2" />
+                      <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto text-[#4338ca] mb-2" />
                       <span>Loading customer instances...</span>
                     </td>
                   </tr>
@@ -1073,7 +1073,7 @@ export default function Licenses() {
                               target="_blank"
                               rel="noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-lime-100 text-lime-900 hover:bg-lime-200 border border-lime-300 shrink-0 inline-flex items-center gap-0.5"
+                              className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-indigo-100 text-indigo-900 hover:bg-indigo-100 border border-indigo-300 shrink-0 inline-flex items-center gap-0.5"
                               title={`Run locally on http://localhost:${appPortForProduct(c.softwareProduct)}/?tenant=${c.customerCode || c.subdomain || c.shopSlug} (Cloud remains untouched)`}
                             >
                               <span>💻</span> Local
@@ -1234,7 +1234,7 @@ export default function Licenses() {
                   <button
                     type="button"
                     onClick={() => handleOpenConvertModal(selectedClient)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg shadow-xs transition"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg shadow-sm transition"
                     title="Convert Trial to Production"
                   >
                     ⭐ Convert to Production
@@ -1243,7 +1243,7 @@ export default function Licenses() {
                 <button
                   type="button"
                   onClick={() => setWizardOpen(false)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition shadow-xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition shadow-sm"
                   title="Back to Instance List"
                 >
                   <Icon name="arrow-left" className="w-3.5 h-3.5" /> Back
@@ -1325,7 +1325,7 @@ export default function Licenses() {
             <form onSubmit={handleWizardSubmit} className="space-y-6 w-full">
               
               {/* SECTION 1: Customer Profile */}
-              <div id="sec-identity" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 scroll-mt-6">
+              <div id="sec-identity" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 scroll-mt-6">
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                   <Icon name="store" className="w-3.5 h-3.5 text-emerald-600" /> 1. Customer Profile &amp; Store Info
                 </h3>
@@ -1339,7 +1339,7 @@ export default function Licenses() {
                       onChange={e => handleNameChange(e.target.value)}
                       placeholder="e.g. Saraswathi Silks"
                       required
-                      className="w-full px-3 py-1.5 text-xs font-medium rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                      className="w-full px-3 py-1.5 text-xs font-medium rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                     />
                   </div>
 
@@ -1351,7 +1351,7 @@ export default function Licenses() {
                       onChange={e => setWizardForm({ ...wizardForm, customerCode: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') })}
                       placeholder="e.g. saraswat-tx or apx-wa01"
                       required
-                      className="w-full px-3 py-1.5 text-xs font-mono font-bold lowercase rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                      className="w-full px-3 py-1.5 text-xs font-mono font-bold lowercase rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                     />
                   </div>
                 </div>
@@ -1365,7 +1365,7 @@ export default function Licenses() {
                       onChange={e => setWizardForm({ ...wizardForm, ownerEmail: e.target.value, pendingOwnerEmail: e.target.value })}
                       placeholder="admin@store.com"
                       required
-                      className="w-full px-3 py-1.5 text-xs font-medium rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                      className="w-full px-3 py-1.5 text-xs font-medium rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                     />
                   </div>
 
@@ -1376,7 +1376,7 @@ export default function Licenses() {
                         <button
                           type="button"
                           onClick={handleGenerateOwnerPassword}
-                          className="text-[10px] font-bold text-[#65a30d] hover:underline cursor-pointer"
+                          className="text-[10px] font-bold text-[#4338ca] hover:underline cursor-pointer"
                         >
                           ⚡ Auto-Generate
                         </button>
@@ -1392,7 +1392,7 @@ export default function Licenses() {
                         onChange={e => setWizardForm({ ...wizardForm, ownerPassword: e.target.value })}
                         placeholder={wizardMode === 'edit' ? '(Leave blank to keep unchanged)' : 'e.g. Renic@2026'}
                         required={wizardMode === 'create'}
-                        className="w-full pl-3 pr-8 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                        className="w-full pl-3 pr-8 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                       />
                       <button
                         type="button"
@@ -1415,14 +1415,14 @@ export default function Licenses() {
                       onChange={e => setWizardForm({ ...wizardForm, ownerMobile: e.target.value, contact: e.target.value, pendingOwnerMobile: e.target.value })}
                       placeholder="9876543210"
                       required
-                      className="w-full px-3 py-1.5 text-xs font-medium rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                      className="w-full px-3 py-1.5 text-xs font-medium rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                     />
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-bold text-slate-700">Plan Tier</label>
-                      <Link to="/plan-tiers" className="text-[10px] font-bold text-[#65a30d] hover:underline">
+                      <Link to="/plan-tiers" className="text-[10px] font-bold text-[#4338ca] hover:underline">
                         + Manage Plans
                       </Link>
                     </div>
@@ -1551,7 +1551,7 @@ export default function Licenses() {
                             })}
                             className={`px-2 py-1 rounded text-xs font-bold transition ${
                               wizardForm.trialDays === days
-                                ? 'bg-amber-600 text-white shadow-xs'
+                                ? 'bg-amber-600 text-white shadow-sm'
                                 : 'bg-white border border-amber-300 text-amber-900 hover:bg-amber-100'
                             }`}
                           >
@@ -1591,7 +1591,7 @@ export default function Licenses() {
               </div>
 
               {/* SECTION 2: Security & OAuth 2.0 */}
-              <div id="sec-security" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 scroll-mt-6">
+              <div id="sec-security" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 scroll-mt-6">
                 <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-100">
                   <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                     <Icon name="key" className="w-3.5 h-3.5 text-[#4f46e5]" /> 2. Security &amp; OAuth 2.0 Credentials
@@ -1599,7 +1599,7 @@ export default function Licenses() {
                   <button
                     type="button"
                     onClick={() => handleGenerateNewSecret()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0f172a] hover:bg-[#1e293b] text-white text-xs font-bold rounded-lg transition shadow-xs cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0f172a] hover:bg-[#1e293b] text-white text-xs font-bold rounded-lg transition shadow-sm cursor-pointer"
                   >
                     <Icon name="refresh" className="w-3.5 h-3.5" />
                     ⚡ Generate from Customer ID {wizardForm.customerCode ? `(${wizardForm.customerCode})` : ''}
@@ -1622,7 +1622,7 @@ export default function Licenses() {
                         value={wizardForm.clientId}
                         onChange={e => setWizardForm({ ...wizardForm, clientId: e.target.value })}
                         placeholder="Click Generate or enter ID"
-                        className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-slate-50"
+                        className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-slate-50"
                       />
                       <CopyBtn text={wizardForm.clientId} showLabel={false} />
                     </div>
@@ -1636,7 +1636,7 @@ export default function Licenses() {
                         value={wizardForm.clientSecret}
                         onChange={e => setWizardForm({ ...wizardForm, clientSecret: e.target.value })}
                         placeholder="Click Generate or enter Secret"
-                        className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-slate-50"
+                        className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-slate-50"
                       />
                       <button
                         type="button"
@@ -1659,7 +1659,7 @@ export default function Licenses() {
                     type="button"
                     onClick={() => setWizardForm({ ...wizardForm, oauthEnforced: !wizardForm.oauthEnforced })}
                     className={`px-3 py-1 text-xs font-bold rounded transition ${
-                      wizardForm.oauthEnforced ? 'bg-[#84cc16] text-[#0f172a]' : 'bg-slate-200 text-slate-700'
+                      wizardForm.oauthEnforced ? 'bg-[#4f46e5] text-[#0f172a]' : 'bg-slate-200 text-slate-700'
                     }`}
                   >
                     {wizardForm.oauthEnforced ? 'YES' : 'NO'}
@@ -1711,7 +1711,7 @@ export default function Licenses() {
                       onClick={() => setWizardForm({ ...wizardForm, allowWithoutBalance: !wizardForm.allowWithoutBalance })}
                       className={`px-3.5 py-1.5 text-xs font-bold rounded-lg border transition whitespace-nowrap cursor-pointer ${
                         wizardForm.allowWithoutBalance
-                          ? 'bg-amber-500 text-slate-950 border-amber-600 hover:bg-amber-400 shadow-xs'
+                          ? 'bg-amber-500 text-slate-950 border-amber-600 hover:bg-amber-400 shadow-sm'
                           : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                       }`}
                     >
@@ -1722,7 +1722,7 @@ export default function Licenses() {
               </div>
 
               {/* SECTION 3: App & Smart Routing */}
-              <div id="sec-routing" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 scroll-mt-6">
+              <div id="sec-routing" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 scroll-mt-6">
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                   <Icon name="network" className="w-3.5 h-3.5 text-indigo-600" /> 3. Application &amp; Reverse Proxy Routing
                 </h3>
@@ -1832,22 +1832,22 @@ export default function Licenses() {
                   </div>
 
                   {/* 2. Localhost Development Loopback */}
-                  <div className="p-3 bg-lime-50/80 border border-lime-300 rounded-lg text-xs space-y-2">
+                  <div className="p-3 bg-indigo-50/80 border border-indigo-300 rounded-lg text-xs space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-lime-950 flex items-center gap-1.5">
+                      <span className="font-bold text-slate-900 flex items-center gap-1.5">
                         💻 Run Client Locally (Cloud Remains Active &amp; Untouched):
                       </span>
-                      <span className="text-[10px] text-lime-800 font-semibold px-2 py-0.5 bg-lime-200 rounded-full">Port :{currentWizardPort}</span>
+                      <span className="text-[10px] text-[#3730a3] font-semibold px-2 py-0.5 bg-indigo-100 rounded-full">Port :{currentWizardPort}</span>
                     </div>
-                    <p className="text-[11px] text-lime-900 leading-relaxed">
+                    <p className="text-[11px] text-indigo-900 leading-relaxed">
                       Launch and test this client tenant directly on your local Vite dev server without disturbing the live cloud URL:
                     </p>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div className="bg-white p-2.5 rounded-lg border border-lime-200 flex flex-col justify-between shadow-2xs">
+                      <div className="bg-white p-2.5 rounded-lg border border-indigo-200 flex flex-col justify-between shadow-2xs">
                         <div className="mb-2">
                           <span className="text-[10px] text-slate-400 block font-sans">Direct Local Client URL:</span>
-                          <span className="font-mono text-[11px] text-lime-950 font-bold truncate block">{localDevUrl}</span>
+                          <span className="font-mono text-[11px] text-slate-900 font-bold truncate block">{localDevUrl}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <CopyBtn text={localDevUrl} showLabel={false} className="!p-1.5" />
@@ -1855,17 +1855,17 @@ export default function Licenses() {
                             href={localDevUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex-1 px-2.5 py-1.5 text-center text-[11px] font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-2xs transition"
+                            className="flex-1 px-2.5 py-1.5 text-center text-[11px] font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded-lg shadow-2xs transition"
                           >
                             Open Local Client 🚀
                           </a>
                         </div>
                       </div>
 
-                      <div className="bg-white p-2.5 rounded-lg border border-lime-200 flex flex-col justify-between shadow-2xs">
+                      <div className="bg-white p-2.5 rounded-lg border border-indigo-200 flex flex-col justify-between shadow-2xs">
                         <div className="mb-2">
                           <span className="text-[10px] text-slate-400 block font-sans">Local Subdomain (lvh.me):</span>
-                          <span className="font-mono text-[11px] text-lime-950 font-bold truncate block">{localLvhUrl}</span>
+                          <span className="font-mono text-[11px] text-slate-900 font-bold truncate block">{localLvhUrl}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <CopyBtn text={localLvhUrl} showLabel={false} className="!p-1.5" />
@@ -1904,7 +1904,7 @@ export default function Licenses() {
               </div>
 
               {/* SECTION 4: Feature Governance */}
-              <div id="sec-screens" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 scroll-mt-6">
+              <div id="sec-screens" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 scroll-mt-6">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
@@ -1941,7 +1941,7 @@ export default function Licenses() {
                         appFeaturesList.forEach(f => { allOn[f.key] = true; });
                         setWizardForm({ ...wizardForm, screenPermissions: allOn });
                       }}
-                      className="text-[11px] font-bold text-[#65a30d] hover:underline px-2 py-1 rounded bg-lime-50 border border-lime-200"
+                      className="text-[11px] font-bold text-[#4338ca] hover:underline px-2 py-1 rounded bg-indigo-50 border border-indigo-200"
                     >
                       Select All 100%
                     </button>
@@ -1949,7 +1949,7 @@ export default function Licenses() {
                 </div>
 
                 {/* Dynamic Solution Mode & Business Type Governance */}
-                <div className="p-4 bg-gradient-to-r from-slate-50 via-emerald-50/20 to-lime-50/30 border border-slate-200 rounded-xl space-y-3.5">
+                <div className="p-4 bg-gradient-to-r from-slate-50 via-emerald-50/20 to-indigo-50/30 border border-slate-200 rounded-xl space-y-3.5">
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
@@ -1974,7 +1974,7 @@ export default function Licenses() {
                           onClick={() => toggleSolutionMode(m.modeKey)}
                           className={`p-3 rounded-xl border-2 cursor-pointer transition select-none flex flex-col justify-between ${
                             isChecked
-                              ? 'bg-emerald-50/80 border-emerald-500 shadow-xs'
+                              ? 'bg-emerald-50/80 border-emerald-500 shadow-sm'
                               : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/70'
                           }`}
                         >
@@ -2115,7 +2115,7 @@ export default function Licenses() {
                         key={feat.key}
                         className={`flex items-center justify-between p-2.5 rounded-lg border text-xs cursor-pointer transition select-none ${
                           isEnabled
-                            ? 'bg-lime-50/40 border-lime-300 font-bold text-slate-900 shadow-2xs'
+                            ? 'bg-indigo-50/40 border-indigo-300 font-bold text-slate-900 shadow-2xs'
                             : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
                         }`}
                       >
@@ -2137,7 +2137,7 @@ export default function Licenses() {
                               }
                             });
                           }}
-                          className="rounded text-[#65a30d] focus:ring-[#84cc16] w-4 h-4 cursor-pointer"
+                          className="rounded text-[#4338ca] focus:ring-[#4f46e5] w-4 h-4 cursor-pointer"
                         />
                       </label>
                     );
@@ -2148,14 +2148,14 @@ export default function Licenses() {
                 <div className="p-4 bg-slate-900 text-white rounded-xl border border-slate-800 space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="text-xs font-bold text-lime-400 uppercase tracking-wider flex items-center gap-2">
+                      <h4 className="text-xs font-bold text-[#818cf8] uppercase tracking-wider flex items-center gap-2">
                         <span>🏛️</span> Master Branch Governance &amp; Enterprise Entitlements
                       </h4>
                       <p className="text-[11px] text-slate-400 mt-0.5">
                         Strictly enforced by Renic Soft Master HQ over-the-air. Downstream client cannot self-enable.
                       </p>
                     </div>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-lime-500/20 text-lime-400 border border-lime-500/30">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#4f46e5]/20 text-[#818cf8] border border-[#4f46e5]/30">
                       MASTER GOVERNED
                     </span>
                   </div>
@@ -2174,7 +2174,7 @@ export default function Licenses() {
                             maxBranches: e.target.value === 'SINGLE' ? 1 : Math.max(2, wizardForm.branchConfig?.maxBranches || 3)
                           }
                         })}
-                        className="w-full px-2.5 py-1.5 text-xs font-bold rounded bg-slate-900 text-white border border-slate-700 focus:outline-none focus:border-lime-500"
+                        className="w-full px-2.5 py-1.5 text-xs font-bold rounded bg-slate-900 text-white border border-slate-700 focus:outline-none focus:border-[#4f46e5]"
                       >
                         <option value="SINGLE">Single Branch (Main Showroom)</option>
                         <option value="MULTI">Multi-Branch Network (HQ + Branches)</option>
@@ -2200,7 +2200,7 @@ export default function Licenses() {
                             maxBranches: parseInt(e.target.value, 10) || 1
                           }
                         })}
-                        className="w-full px-2.5 py-1.5 text-xs font-bold rounded bg-slate-900 text-white border border-slate-700 focus:outline-none focus:border-lime-500 disabled:opacity-50"
+                        className="w-full px-2.5 py-1.5 text-xs font-bold rounded bg-slate-900 text-white border border-slate-700 focus:outline-none focus:border-[#4f46e5] disabled:opacity-50"
                       />
                       <span className="text-[10px] text-slate-400 block mt-1">
                         Licensed branch limit under single client ID
@@ -2224,7 +2224,7 @@ export default function Licenses() {
                           }
                         })}
                         className={`w-full py-1 text-xs font-bold rounded mt-2 transition ${
-                          wizardForm.branchConfig?.allowInterBranchTransfer ? 'bg-lime-500 text-slate-950' : 'bg-slate-700 text-slate-300'
+                          wizardForm.branchConfig?.allowInterBranchTransfer ? 'bg-[#4f46e5] text-slate-950' : 'bg-slate-700 text-slate-300'
                         } disabled:opacity-40`}
                       >
                         {wizardForm.branchConfig?.allowInterBranchTransfer ? 'ENABLED' : 'DISABLED'}
@@ -2252,7 +2252,7 @@ export default function Licenses() {
                               allowPartialRelease: e.target.checked
                             }
                           })}
-                          className="w-4 h-4 rounded text-lime-500 focus:ring-lime-400 cursor-pointer ml-2"
+                          className="w-4 h-4 rounded text-[#4f46e5] focus:ring-[#4f46e5] cursor-pointer ml-2"
                         />
                       </label>
 
@@ -2272,7 +2272,7 @@ export default function Licenses() {
                               allowRePledge: e.target.checked
                             }
                           })}
-                          className="w-4 h-4 rounded text-lime-500 focus:ring-lime-400 cursor-pointer ml-2"
+                          className="w-4 h-4 rounded text-[#4f46e5] focus:ring-[#4f46e5] cursor-pointer ml-2"
                         />
                       </label>
 
@@ -2292,7 +2292,7 @@ export default function Licenses() {
                               enableBlacklistShield: e.target.checked
                             }
                           })}
-                          className="w-4 h-4 rounded text-lime-500 focus:ring-lime-400 cursor-pointer ml-2"
+                          className="w-4 h-4 rounded text-[#4f46e5] focus:ring-[#4f46e5] cursor-pointer ml-2"
                         />
                       </label>
                     </div>
@@ -2302,7 +2302,7 @@ export default function Licenses() {
 
               {/* SECTION 4B (TEXTILE_POS ONLY): Field-Level Visibility & Required Control */}
               {wizardForm.softwareProduct === 'TEXTILE_POS' && (
-                <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
+                <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
                   <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                     <Icon name="dashboard" className="w-3.5 h-3.5 text-amber-600" /> 4B. Field Visibility &amp; Required Control
                   </h3>
@@ -2329,7 +2329,7 @@ export default function Licenses() {
                           }
                         })
                       }
-                      className="w-full sm:max-w-xs border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 bg-white focus:ring-2 focus:ring-lime-400 focus:border-lime-500"
+                      className="w-full sm:max-w-xs border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 bg-white focus:ring-2 focus:ring-[#4f46e5] focus:border-[#4f46e5]"
                     >
                       <option value="perUnit">One item = one barcode (qty 10 → 10 SKUs)</option>
                       <option value="singleBarcode">Single barcode holds quantity (qty 10 → 1 SKU)</option>
@@ -2383,7 +2383,7 @@ export default function Licenses() {
                                         }
                                       });
                                     }}
-                                    className="rounded text-[#65a30d] focus:ring-[#84cc16] w-3.5 h-3.5"
+                                    className="rounded text-[#4338ca] focus:ring-[#4f46e5] w-3.5 h-3.5"
                                   />
                                   Visible
                                 </label>
@@ -2403,7 +2403,7 @@ export default function Licenses() {
                                         }
                                       });
                                     }}
-                                    className="rounded text-[#65a30d] focus:ring-[#84cc16] w-3.5 h-3.5"
+                                    className="rounded text-[#4338ca] focus:ring-[#4f46e5] w-3.5 h-3.5"
                                   />
                                   Required
                                 </label>
@@ -2419,7 +2419,7 @@ export default function Licenses() {
 
               {/* SECTION 4B (WA_INSTA_AUTOMATION ONLY): WhatsApp Sender Engine & Throttle Governance */}
               {wizardForm.softwareProduct === 'WA_INSTA_AUTOMATION' && (
-                <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
+                <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
                   <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                     <Icon name="chat" className="w-3.5 h-3.5 text-emerald-600" /> 4B. WhatsApp Sender Engine &amp; Dispatch Governance
                   </h3>
@@ -2431,7 +2431,7 @@ export default function Licenses() {
                       <select
                         value={wizardForm.whatsappSenderMode || 'DOCKER'}
                         onChange={(e) => setWizardForm({ ...wizardForm, whatsappSenderMode: e.target.value })}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-lime-400 focus:border-lime-500"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-[#4f46e5] focus:border-[#4f46e5]"
                       >
                         <option value="DOCKER">🐳 Docker WAHA (Local QR Session Engine)</option>
                         <option value="META">⚡ Official Meta WhatsApp Cloud API</option>
@@ -2451,7 +2451,7 @@ export default function Licenses() {
                         max="60"
                         value={wizardForm.dockerThrottleSeconds || 6}
                         onChange={(e) => setWizardForm({ ...wizardForm, dockerThrottleSeconds: Number(e.target.value) || 6 })}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-lime-400 focus:border-lime-500"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-[#4f46e5] focus:border-[#4f46e5]"
                       />
                       <span className="text-[10px] text-slate-400 block mt-1">
                         Pause duration between each outgoing bulk broadcast message to prevent WhatsApp bans.
@@ -2473,7 +2473,7 @@ export default function Licenses() {
                             type="button"
                             onClick={handleProbeWaha}
                             disabled={wahaProbing}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded bg-slate-900 hover:bg-slate-800 text-white shadow-xs transition"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded bg-slate-900 hover:bg-slate-800 text-white shadow-sm transition"
                           >
                             <Icon name="refresh" className={`w-3 h-3 ${wahaProbing ? 'animate-spin text-emerald-400' : ''}`} />
                             {wahaProbing ? 'Probing...' : 'Test Connection'}
@@ -2524,7 +2524,7 @@ export default function Licenses() {
                               value={wizardForm.wahaApiUrl || ''}
                               onChange={(e) => setWizardForm({ ...wizardForm, wahaApiUrl: e.target.value })}
                               placeholder="e.g. https://devlikeaprowaha-production-661c.up.railway.app or http://localhost:3000"
-                              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 bg-white focus:ring-2 focus:ring-lime-400 focus:border-lime-500"
+                              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 bg-white focus:ring-2 focus:ring-[#4f46e5] focus:border-[#4f46e5]"
                             />
                           </div>
 
@@ -2546,7 +2546,7 @@ export default function Licenses() {
                                 value={wizardForm.wahaApiKey || ''}
                                 onChange={(e) => setWizardForm({ ...wizardForm, wahaApiKey: e.target.value })}
                                 placeholder="Paste WAHA_API_KEY"
-                                className="w-full border border-slate-300 rounded-lg px-3 py-2 pr-16 text-xs font-mono text-slate-800 bg-white focus:ring-2 focus:ring-lime-400 focus:border-lime-500"
+                                className="w-full border border-slate-300 rounded-lg px-3 py-2 pr-16 text-xs font-mono text-slate-800 bg-white focus:ring-2 focus:ring-[#4f46e5] focus:border-[#4f46e5]"
                               />
                               <button
                                 type="button"
@@ -2566,7 +2566,7 @@ export default function Licenses() {
                               value={wizardForm.wahaSessionName || 'default'}
                               onChange={(e) => setWizardForm({ ...wizardForm, wahaSessionName: e.target.value })}
                               placeholder="default"
-                              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 bg-white focus:ring-2 focus:ring-lime-400 focus:border-lime-500"
+                              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 bg-white focus:ring-2 focus:ring-[#4f46e5] focus:border-[#4f46e5]"
                             />
                             <span className="text-[10px] text-slate-400 block mt-1">Default session name is <code className="text-slate-600">default</code></span>
                           </div>
@@ -2578,7 +2578,7 @@ export default function Licenses() {
               )}
 
               {/* SECTION 5: Engine & Diagnostics */}
-              <div id="sec-deployment" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs space-y-4 scroll-mt-6">
+              <div id="sec-deployment" className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 scroll-mt-6">
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                   <Icon name="license" className="w-3.5 h-3.5 text-teal-600" /> 5. Engine Health &amp; Pre-Flight Probe
                 </h3>
@@ -2722,7 +2722,7 @@ export default function Licenses() {
               type="button"
               onClick={handleWizardSubmit}
               disabled={wizardSubmitting}
-              className="px-5 py-1.5 text-xs font-bold text-white bg-[#0f172a] hover:bg-[#1e293b] rounded shadow-xs transition flex items-center gap-1.5"
+              className="px-5 py-1.5 text-xs font-bold text-white bg-[#0f172a] hover:bg-[#1e293b] rounded shadow-sm transition flex items-center gap-1.5"
             >
               {wizardSubmitting ? (
                 <>
@@ -2770,7 +2770,7 @@ export default function Licenses() {
               <button
                 type="button"
                 onClick={() => { setCreatedCreds(null); setRevealSecret(false); }}
-                className="px-5 py-2 text-xs font-bold text-white bg-[#0f172a] hover:bg-[#1e293b] rounded shadow-xs transition"
+                className="px-5 py-2 text-xs font-bold text-white bg-[#0f172a] hover:bg-[#1e293b] rounded shadow-sm transition"
               >
                 Done
               </button>
@@ -2850,7 +2850,7 @@ export default function Licenses() {
                 type="button"
                 onClick={handleConvertTrialSubmit}
                 disabled={convertSubmitting}
-                className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded shadow-xs transition flex items-center gap-1.5"
+                className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded shadow-sm transition flex items-center gap-1.5"
               >
                 {convertSubmitting ? (
                   <>

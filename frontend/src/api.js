@@ -15,8 +15,10 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response && err.response.status === 401) {
+      const reqUrl = String(err.config?.url || '');
       const from = window.location.pathname;
-      if (from !== '/login') {
+      // Only force redirect and wipe session if the failure was specifically from the master auth/profile verification
+      if (from !== '/login' && (reqUrl.includes('/auth/me') || reqUrl.includes('/auth/verify'))) {
         localStorage.removeItem('renic_token');
         localStorage.removeItem('renic_user');
         window.location.href = '/login';

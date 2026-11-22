@@ -20,7 +20,7 @@ export default function Dashboard() {
   }, []);
 
   const cards = [
-    { label: 'Total Licenses', value: data?.totalClients ?? '—', icon: 'store', color: 'bg-lime-50 text-blue-600', to: '/licenses' },
+    { label: 'Total Licenses', value: data?.totalClients ?? '—', icon: 'store', color: 'bg-indigo-50 text-blue-600', to: '/licenses' },
     { label: 'Active Plans', value: data?.activeClients ?? '—', icon: 'check', color: 'bg-emerald-50 text-emerald-600', to: '/licenses' },
     { label: 'Quotations', value: data?.totalQuotes ?? '—', icon: 'quote', color: 'bg-violet-50 text-violet-600', to: '/quotes' },
     { label: 'Invoices', value: data?.totalBills ?? '—', icon: 'bill', color: 'bg-amber-50 text-amber-600', to: '/billing' },
@@ -73,7 +73,7 @@ export default function Dashboard() {
           {/* Top Metric Cards (Compact Enterprise Grid) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             {cards.map((c) => (
-              <Link key={c.label} to={c.to} className="bg-white p-2.5 rounded-lg border border-slate-200/90 shadow-2xs hover:border-[#4f46e5] hover:shadow-xs transition group">
+              <Link key={c.label} to={c.to} className="bg-white p-2.5 rounded-lg border border-slate-200/90 shadow-2xs hover:border-[#4f46e5] hover:shadow-sm transition group">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{c.label}</span>
                   <div className={`w-6 h-6 rounded-md flex items-center justify-center ${c.color} group-hover:scale-105 transition`}>

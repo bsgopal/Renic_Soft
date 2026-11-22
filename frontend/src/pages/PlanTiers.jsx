@@ -274,14 +274,14 @@ export default function PlanTiers() {
       <div className="px-3.5 py-2 bg-white border-b border-slate-200 flex-shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#84cc16] flex items-center justify-center font-bold flex-shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#4f46e5] flex items-center justify-center font-bold flex-shrink-0">
               <Icon name="tag" className="w-3.5 h-3.5" />
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-sm font-black text-slate-900 tracking-tight">
                 Plan Tiers &amp; Screen Permissions
               </h1>
-              <span className="px-2 py-0.5 rounded text-[10px] font-black bg-slate-900 text-lime-400 font-mono">
+              <span className="px-2 py-0.5 rounded text-[10px] font-black bg-slate-900 text-[#818cf8] font-mono">
                 {plans.length} Tiers
               </span>
             </div>
@@ -299,7 +299,7 @@ export default function PlanTiers() {
             <button
               type="button"
               onClick={handleOpenCreateModal}
-              className="inline-flex items-center gap-1 px-3 py-1 bg-[#84cc16] hover:bg-[#72b012] text-[#0f172a] font-bold text-xs rounded-lg shadow-2xs transition"
+              className="inline-flex items-center gap-1 px-3 py-1 bg-[#4f46e5] hover:bg-[#72b012] text-[#0f172a] font-bold text-xs rounded-lg shadow-2xs transition"
             >
               <Icon name="plus" className="w-3.5 h-3.5 stroke-[2.5]" /> Create Plan Tier
             </button>
@@ -316,7 +316,7 @@ export default function PlanTiers() {
               placeholder="Search plans by name, code..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-7 pr-3 py-1 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:border-[#84cc16] font-medium"
+              className="w-full pl-7 pr-3 py-1 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:border-[#4f46e5] font-medium"
             />
             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
               <Icon name="search" className="w-3 h-3" />
@@ -359,7 +359,7 @@ export default function PlanTiers() {
 
       {/* Main Table Layout */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-100/80 sticky top-0 z-10 border-b border-slate-200 text-[11px] font-bold text-slate-600">
               <tr>
@@ -376,7 +376,7 @@ export default function PlanTiers() {
               {loading ? (
                 <tr>
                   <td colSpan={7} className="py-16 text-center text-slate-400">
-                    <Icon name="refresh" className="w-6 h-6 animate-spin mx-auto text-[#65a30d] mb-2" />
+                    <Icon name="refresh" className="w-6 h-6 animate-spin mx-auto text-[#4338ca] mb-2" />
                     <span className="font-semibold">Loading plan tiers...</span>
                   </td>
                 </tr>
@@ -396,7 +396,7 @@ export default function PlanTiers() {
                     <tr
                       key={plan._id}
                       className={`hover:bg-slate-50/80 transition ${
-                        isPopular ? 'border-l-4 border-l-[#84cc16]' : 'border-l-4 border-l-transparent'
+                        isPopular ? 'border-l-4 border-l-[#4f46e5]' : 'border-l-4 border-l-transparent'
                       }`}
                     >
                       {/* Plan Name & Code */}
@@ -404,7 +404,7 @@ export default function PlanTiers() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-bold text-slate-900 text-xs">{plan.name}</span>
                           {plan.badgeText && (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#84cc16]/20 text-[#0f172a] border border-[#84cc16]/40">
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#4f46e5]/20 text-[#0f172a] border border-[#4f46e5]/40">
                               {plan.badgeText}
                             </span>
                           )}
@@ -542,7 +542,7 @@ export default function PlanTiers() {
                     value={formData.appCode}
                     onChange={(e) => handleAppChangeInModal(e.target.value)}
                     disabled={modalMode === 'edit'}
-                    className="w-full px-3 py-1.5 text-xs font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-[#4f46e5]"
                   >
                     {apps.map((app) => (
                       <option key={app.appCode} value={app.appCode}>{app.name}</option>
@@ -560,7 +560,7 @@ export default function PlanTiers() {
                     placeholder="e.g. Pro Business Plan"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
 
@@ -575,7 +575,7 @@ export default function PlanTiers() {
                     placeholder="e.g. WA_PRO"
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                    className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] disabled:bg-slate-100 disabled:text-slate-500"
+                    className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] disabled:bg-slate-100 disabled:text-slate-500"
                   />
                 </div>
               </div>
@@ -590,7 +590,7 @@ export default function PlanTiers() {
                     required
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
-                    className="w-full px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
 
@@ -618,7 +618,7 @@ export default function PlanTiers() {
                     placeholder="e.g. Most Popular"
                     value={formData.badgeText}
                     onChange={(e) => setFormData({ ...formData, badgeText: e.target.value })}
-                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
               </div>
@@ -632,7 +632,7 @@ export default function PlanTiers() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Summary of what is included in this tier..."
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                 />
               </div>
             </div>
@@ -669,7 +669,7 @@ export default function PlanTiers() {
 
               {screensLoading ? (
                 <div className="p-8 text-center text-slate-400">
-                  <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto text-[#65a30d] mb-1" />
+                  <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto text-[#4338ca] mb-1" />
                   <span>Loading screens for {formData.appCode}...</span>
                 </div>
               ) : availableScreens.length === 0 ? (
@@ -680,7 +680,7 @@ export default function PlanTiers() {
                 <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                   {Object.entries(screensByCategory).map(([category, screensList]) => (
                     <div key={category} className="bg-white p-3 rounded-lg border border-slate-200">
-                      <span className="font-bold text-slate-700 block mb-2 text-[11px] uppercase tracking-wider text-[#65a30d]">
+                      <span className="font-bold text-slate-700 block mb-2 text-[11px] uppercase tracking-wider text-[#4338ca]">
                         {category}
                       </span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -691,7 +691,7 @@ export default function PlanTiers() {
                               key={screen.key}
                               className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition ${
                                 isChecked
-                                  ? 'bg-lime-50/70 border-[#84cc16]'
+                                  ? 'bg-indigo-50/70 border-[#4f46e5]'
                                   : 'bg-slate-50/50 border-slate-200 hover:bg-slate-50'
                               }`}
                             >
@@ -699,7 +699,7 @@ export default function PlanTiers() {
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={() => toggleScreenSelection(screen.key)}
-                                className="mt-0.5 rounded border-slate-300 text-[#84cc16] focus:ring-[#84cc16]"
+                                className="mt-0.5 rounded border-slate-300 text-[#4f46e5] focus:ring-[#4f46e5]"
                               />
                               <div className="min-w-0">
                                 <span className="font-bold text-slate-900 block leading-tight">{screen.label}</span>
@@ -766,7 +766,7 @@ export default function PlanTiers() {
                     type="checkbox"
                     checked={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    className="rounded border-slate-300 text-[#84cc16] focus:ring-[#84cc16]"
+                    className="rounded border-slate-300 text-[#4f46e5] focus:ring-[#4f46e5]"
                   />
                   <span>Active Tier</span>
                 </label>
@@ -775,7 +775,7 @@ export default function PlanTiers() {
                     type="checkbox"
                     checked={formData.isPopular}
                     onChange={(e) => setFormData({ ...formData, isPopular: e.target.checked })}
-                    className="rounded border-slate-300 text-[#84cc16] focus:ring-[#84cc16]"
+                    className="rounded border-slate-300 text-[#4f46e5] focus:ring-[#4f46e5]"
                   />
                   <span>Mark as Popular / Featured</span>
                 </label>
@@ -794,7 +794,7 @@ export default function PlanTiers() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-5 py-1.5 text-xs font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-xs transition"
+                className="px-5 py-1.5 text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded-lg shadow-sm transition"
               >
                 {submitting ? 'Saving...' : modalMode === 'create' ? 'Create Plan Tier' : 'Save Changes'}
               </button>

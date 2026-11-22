@@ -25,7 +25,7 @@ export default function InvoiceDoc({
   company = {},
   paymentDetails = '',
   termsConditions = '',
-  themeColor = '#84CC16'
+  themeColor = '#4F46E5'
 }) {
   const c = {
     companyName: company?.name || 'RENIC TECH',
@@ -38,7 +38,7 @@ export default function InvoiceDoc({
     logoUrl: company?.logoUrl || logo
   };
 
-  const color = themeColor || '#84CC16'; // Exact Renic Tech Lime Green
+  const color = themeColor || '#4F46E5'; // Renic Enterprise Sapphire Indigo
   const bgSoft = getAlphaColor(color, '12');
   const borderSoft = getAlphaColor(color, '30');
   const ribbonGradient = `linear-gradient(135deg, ${getAlphaColor(color, '12')} 0%, ${getAlphaColor(color, '25')} 50%, ${getAlphaColor(color, '40')} 100%)`;
@@ -64,7 +64,7 @@ export default function InvoiceDoc({
   return (
     <div
       id="print-area"
-      className="bg-white p-6 sm:p-8 md:p-10 text-[13px] text-slate-800 leading-relaxed max-w-4xl mx-auto shadow-xs border border-slate-200 rounded-xl my-2"
+      className="bg-white p-6 sm:p-8 md:p-10 text-[13px] text-slate-800 leading-relaxed max-w-4xl mx-auto shadow-sm border border-slate-200 rounded-xl my-2"
       style={{ fontFamily: "'Inter', 'Segoe UI', -apple-system, sans-serif" }}
     >
       {/* 1. Header with Big, Sharp Renic Tech Logo on Left, Contact info on Right */}
@@ -73,7 +73,7 @@ export default function InvoiceDoc({
           <img
             src={c.logoUrl}
             alt="Renic Tech Logo"
-            className="h-16 sm:h-20 w-auto object-contain max-w-[280px] drop-shadow-xs"
+            className="h-16 sm:h-20 w-auto object-contain max-w-[280px] drop-shadow-sm"
           />
         </div>
 
@@ -162,7 +162,7 @@ export default function InvoiceDoc({
         </div>
       </div>
 
-      {/* 4. Itemized Table with Solid Lime Accent Header */}
+      {/* 4. Itemized Table with Solid Sapphire Indigo Header */}
       <div className="rounded-xl overflow-hidden border border-slate-200 mb-6">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -307,7 +307,7 @@ export default function InvoiceDoc({
         style={{ background: ribbonGradient, borderColor: borderSoft }}
       >
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg text-slate-950 flex items-center justify-center text-xs font-black shadow-xs" style={{ backgroundColor: color }}>
+          <div className="w-7 h-7 rounded-lg text-slate-950 flex items-center justify-center text-xs font-black shadow-sm" style={{ backgroundColor: color }}>
             ✓
           </div>
           <div>
@@ -319,7 +319,7 @@ export default function InvoiceDoc({
         <div className="hidden sm:block w-px h-6 bg-slate-300/60" />
 
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg text-slate-950 flex items-center justify-center text-xs font-black shadow-xs" style={{ backgroundColor: color }}>
+          <div className="w-7 h-7 rounded-lg text-slate-950 flex items-center justify-center text-xs font-black shadow-sm" style={{ backgroundColor: color }}>
             📊
           </div>
           <div>
@@ -331,7 +331,7 @@ export default function InvoiceDoc({
         <div className="hidden sm:block w-px h-6 bg-slate-300/60" />
 
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg text-slate-950 flex items-center justify-center text-xs font-black shadow-xs" style={{ backgroundColor: color }}>
+          <div className="w-7 h-7 rounded-lg text-slate-950 flex items-center justify-center text-xs font-black shadow-sm" style={{ backgroundColor: color }}>
             👥
           </div>
           <div>

@@ -98,7 +98,7 @@ export default function CustomerActivityReport() {
       {/* Compact Top Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200/90 shadow-2xs">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#84cc16] flex items-center justify-center font-bold flex-shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#4f46e5] flex items-center justify-center font-bold flex-shrink-0">
             <Icon name="eye" className="w-3.5 h-3.5" />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -157,7 +157,7 @@ export default function CustomerActivityReport() {
         <select
           value={selectedCustomer}
           onChange={(e) => { setSelectedCustomer(e.target.value); setPage(1); }}
-          className="text-xs border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 text-slate-700 font-bold focus:outline-hidden focus:border-[#84cc16] max-w-[150px] truncate"
+          className="text-xs border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 text-slate-700 font-bold focus:outline-hidden focus:border-[#4f46e5] max-w-[150px] truncate"
         >
           <option value="ALL">All Customers</option>
           {customersList.map(c => (
@@ -169,7 +169,7 @@ export default function CustomerActivityReport() {
         <select
           value={selectedScreen}
           onChange={(e) => { setSelectedScreen(e.target.value); setPage(1); }}
-          className="text-xs border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 text-slate-700 font-bold focus:outline-hidden focus:border-[#84cc16] max-w-[160px] truncate"
+          className="text-xs border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 text-slate-700 font-bold focus:outline-hidden focus:border-[#4f46e5] max-w-[160px] truncate"
         >
           <option value="ALL">All Screens</option>
           {screensList.map(s => (
@@ -181,7 +181,7 @@ export default function CustomerActivityReport() {
         <select
           value={selectedAction}
           onChange={(e) => { setSelectedAction(e.target.value); setPage(1); }}
-          className="text-xs border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 text-slate-700 font-bold focus:outline-hidden focus:border-[#84cc16]"
+          className="text-xs border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 text-slate-700 font-bold focus:outline-hidden focus:border-[#4f46e5]"
         >
           <option value="ALL">All Actions</option>
           <option value="VIEW">VIEW</option>

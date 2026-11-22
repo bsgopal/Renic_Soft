@@ -41,6 +41,10 @@ export default function ApplicationHub() {
 
   // Selected App in Right Column
   const [selectedApp, setSelectedApp] = useState(null);
+  const [gatewayProbing, setGatewayProbing] = useState(false);
+  const [gatewayProbeResult, setGatewayProbeResult] = useState(null);
+  const [showGatewayApiKey, setShowGatewayApiKey] = useState(false);
+  const [savingGateway, setSavingGateway] = useState(false);
   const [activeTab, setActiveTab] = useState('customers'); // 'customers' | 'features' | 'edit'
   const [isPanelMaximized, setIsPanelMaximized] = useState(false);
   const [splitPercent, setSplitPercent] = useState(30);
@@ -69,7 +73,7 @@ export default function ApplicationHub() {
     modeKey: '',
     displayName: '',
     icon: 'Layers',
-    badgeColor: '#84cc16',
+    badgeColor: '#4f46e5',
     description: '',
     defaultScreenKeys: [],
     isDefault: false
@@ -190,6 +194,51 @@ export default function ApplicationHub() {
     });
   }, [clients]);
 
+    const handleProbeGateway = async () => {
+    try {
+      setGatewayProbing(true);
+      setGatewayProbeResult(null);
+      const url = editForm.gatewayConfig?.wahaApiUrl || '';
+      const key = editForm.gatewayConfig?.wahaApiKey || '';
+      const res = await api.post('/licenses/probe-waha', {
+        wahaApiUrl: url,
+        wahaApiKey: key
+      });
+      setGatewayProbeResult(res.data);
+      if (res.data?.success) {
+        showSnackbar(`✓ WAHA Online! (${res.data.latency}ms, ${res.data.sessions?.length || 0} active sessions)`, 'success');
+      } else {
+        showSnackbar(res.data?.message || 'Gateway probe failed', 'warning');
+      }
+    } catch (err) {
+      const errData = err.response?.data || {};
+      setGatewayProbeResult({ success: false, ...errData });
+      showSnackbar(`❌ Gateway Connection Probe: ${errData.message || 'Failed to connect'}`, 'error');
+    } finally {
+      setGatewayProbing(false);
+    }
+  };
+
+  const handleSaveGateway = async () => {
+    if (!selectedApp) return;
+    try {
+      setSavingGateway(true);
+      await api.put(`/applications/${selectedApp._id}`, {
+        ...editForm,
+        wahaApiUrl: editForm.gatewayConfig?.wahaApiUrl,
+        wahaApiKey: editForm.gatewayConfig?.wahaApiKey,
+        wahaSessionName: editForm.gatewayConfig?.wahaSessionName || 'default',
+        gatewayConfig: editForm.gatewayConfig
+      });
+      showSnackbar('✓ WAHA Gateway & Tunnel Settings saved at Application Level!', 'success');
+      fetchApplications();
+    } catch (err) {
+      showSnackbar(err.response?.data?.message || 'Failed to save gateway settings', 'error');
+    } finally {
+      setSavingGateway(false);
+    }
+  };
+
   const handleSelectApp = (app) => {
     setSelectedApp(app);
     setMode('view');
@@ -204,8 +253,15 @@ export default function ApplicationHub() {
       frontendUrl: app.frontendUrl || app.productionFrontendUrl || '',
       description: app.description || '',
       githubUrl: app.githubUrl || app.localRepoPath || '',
-      localRepoPath: app.localRepoPath || ''
+      localRepoPath: app.localRepoPath || '',
+      gatewayConfig: app.gatewayConfig || {
+        wahaApiUrl: app.wahaApiUrl || 'https://himself-union-simplified-region.trycloudflare.com',
+        wahaApiKey: app.wahaApiKey || '6968d9f6a8c0471587939565fea81e5e',
+        wahaSessionName: app.wahaSessionName || 'default',
+        tunnelUrl: app.tunnelUrl || ''
+      }
     });
+    setGatewayProbeResult(null);
     setFeatureMappingsList(app.featureMappings || []);
     setSolutionModesList(app.solutionModes || []);
   };
@@ -446,7 +502,7 @@ export default function ApplicationHub() {
       modeKey: '',
       displayName: '',
       icon: 'Layers',
-      badgeColor: '#84cc16',
+      badgeColor: '#4f46e5',
       description: '',
       defaultScreenKeys: featureMappingsList.map((f) => f.technicalTarget || f.key),
       isDefault: false
@@ -460,7 +516,7 @@ export default function ApplicationHub() {
       modeKey: modeItem.modeKey || '',
       displayName: modeItem.displayName || '',
       icon: modeItem.icon || 'Layers',
-      badgeColor: modeItem.badgeColor || '#84cc16',
+      badgeColor: modeItem.badgeColor || '#4f46e5',
       description: modeItem.description || '',
       defaultScreenKeys: modeItem.defaultScreenKeys || [],
       isDefault: Boolean(modeItem.isDefault)
@@ -480,7 +536,7 @@ export default function ApplicationHub() {
       modeKey: modeForm.modeKey.trim().toUpperCase().replace(/[^A-Z0-9_]/g, ''),
       displayName: modeForm.displayName.trim(),
       icon: modeForm.icon.trim() || 'Layers',
-      badgeColor: modeForm.badgeColor.trim() || '#84cc16',
+      badgeColor: modeForm.badgeColor.trim() || '#4f46e5',
       description: modeForm.description.trim(),
       defaultScreenKeys: modeForm.defaultScreenKeys || [],
       businessTypes: editingModeIndex >= 0 ? (solutionModesList[editingModeIndex]?.businessTypes || []) : [],
@@ -722,7 +778,7 @@ export default function ApplicationHub() {
                 placeholder="Search applications..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#84cc16] bg-white font-medium"
+                className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:border-[#4f46e5] bg-white font-medium"
               />
               <span className="absolute left-2.5 top-2 text-slate-400">
                 <Icon name="search" className="w-3.5 h-3.5" />
@@ -734,12 +790,12 @@ export default function ApplicationHub() {
               className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
               title="Refresh"
             >
-              <Icon name="refresh" className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#65a30d]' : ''}`} />
+              <Icon name="refresh" className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#4338ca]' : ''}`} />
             </button>
 
             <button
               onClick={handleOpenCreate}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] font-bold text-xs rounded-lg shadow-xs transition"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold text-xs rounded-lg shadow-sm transition"
             >
               <Icon name="plus" className="w-3.5 h-3.5 stroke-[2.5]" /> Register App
             </button>
@@ -766,7 +822,7 @@ export default function ApplicationHub() {
                 {loading ? (
                   <tr>
                     <td colSpan={4} className="py-12 text-center text-slate-400">
-                      <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto text-[#65a30d] mb-2" />
+                      <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto text-[#4338ca] mb-2" />
                       <span>Loading applications...</span>
                     </td>
                   </tr>
@@ -787,7 +843,7 @@ export default function ApplicationHub() {
                         onClick={() => handleSelectApp(a)}
                         className={`cursor-pointer transition select-none ${
                           isSelected
-                            ? 'bg-lime-50/70 border-l-4 border-l-[#84cc16]'
+                            ? 'bg-indigo-50/70 border-l-4 border-l-[#4f46e5]'
                             : 'hover:bg-slate-50 border-l-4 border-l-transparent'
                         }`}
                       >
@@ -827,10 +883,10 @@ export default function ApplicationHub() {
                             <button
                               onClick={() => handleSyncGit(a)}
                               disabled={syncingId === a._id}
-                              className="p-1 text-slate-400 hover:text-[#65a30d] hover:bg-lime-50 rounded transition"
+                              className="p-1 text-slate-400 hover:text-[#4338ca] hover:bg-indigo-50 rounded transition"
                               title="Git Sync"
                             >
-                              <Icon name="refresh" className={`w-3.5 h-3.5 ${syncingId === a._id ? 'animate-spin text-[#65a30d]' : ''}`} />
+                              <Icon name="refresh" className={`w-3.5 h-3.5 ${syncingId === a._id ? 'animate-spin text-[#4338ca]' : ''}`} />
                             </button>
                           </div>
                         </td>
@@ -861,7 +917,7 @@ export default function ApplicationHub() {
               <button
                 type="button"
                 onClick={handleClosePanel}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition shadow-sm"
                 title="Back to Apps List"
               >
                 <Icon name="arrow-left" className="w-3.5 h-3.5" /> Back
@@ -875,7 +931,7 @@ export default function ApplicationHub() {
 
           {/* Form */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/60">
-            <form onSubmit={handleRegisterApp} className="space-y-4 w-full bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+            <form onSubmit={handleRegisterApp} className="space-y-4 w-full bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Application Name *</label>
@@ -890,7 +946,7 @@ export default function ApplicationHub() {
                       const slug = val.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15);
                       setRegisterForm({ ...registerForm, name: val, appCode: code, urlSlug: slug });
                     }}
-                    className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
                 <div>
@@ -901,7 +957,7 @@ export default function ApplicationHub() {
                     placeholder="e.g. GARMENTS_LOGISTICS"
                     value={registerForm.appCode}
                     onChange={(e) => setRegisterForm({ ...registerForm, appCode: e.target.value.toUpperCase() })}
-                    className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
               </div>
@@ -915,7 +971,7 @@ export default function ApplicationHub() {
                     placeholder="logistics"
                     value={registerForm.urlSlug}
                     onChange={(e) => setRegisterForm({ ...registerForm, urlSlug: e.target.value.toLowerCase() })}
-                    className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
                 <div>
@@ -937,7 +993,7 @@ export default function ApplicationHub() {
                     required
                     value={registerForm.defaultPort}
                     onChange={(e) => setRegisterForm({ ...registerForm, defaultPort: e.target.value })}
-                    className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
               </div>
@@ -951,7 +1007,7 @@ export default function ApplicationHub() {
                   placeholder="e.g. https://simplebilling-pi.vercel.app or https://pawn-broking-svr6.vercel.app"
                   value={registerForm.frontendUrl}
                   onChange={(e) => setRegisterForm({ ...registerForm, frontendUrl: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                  className="w-full px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">
                   Client launch URLs are auto-generated from this URL: <code className="bg-slate-100 px-1 py-0.5 rounded text-emerald-700 font-mono font-bold">&#123;frontendUrl&#125;?tenant=&#123;customerCode&#125;</code>
@@ -965,7 +1021,7 @@ export default function ApplicationHub() {
                   value={registerForm.description}
                   onChange={(e) => setRegisterForm({ ...registerForm, description: e.target.value })}
                   placeholder="App capabilities and routing details..."
-                  className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                  className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                 />
               </div>
 
@@ -980,7 +1036,7 @@ export default function ApplicationHub() {
                 <button
                   type="submit"
                   disabled={registerSubmitting}
-                  className="px-5 py-1.5 text-xs font-bold text-white bg-[#84cc16] hover:bg-[#65a30d] rounded shadow-xs"
+                  className="px-5 py-1.5 text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded shadow-sm"
                 >
                   {registerSubmitting ? 'Registering...' : 'Register Application'}
                 </button>
@@ -1020,7 +1076,7 @@ export default function ApplicationHub() {
                 <button
                   type="button"
                   onClick={handleClosePanel}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition shadow-xs"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition shadow-sm"
                   title="Back to Apps List"
                 >
                   <Icon name="arrow-left" className="w-3.5 h-3.5" /> Back
@@ -1028,10 +1084,10 @@ export default function ApplicationHub() {
                 <button
                   type="button"
                   onClick={() => handleSyncGit(selectedApp)}
-                  className="p-1.5 text-slate-500 hover:text-[#65a30d] hover:bg-slate-100 rounded transition"
+                  className="p-1.5 text-slate-500 hover:text-[#4338ca] hover:bg-slate-100 rounded transition"
                   title="Git Sync"
                 >
-                  <Icon name="refresh" className={`w-4 h-4 ${syncingId === selectedApp._id ? 'animate-spin text-[#65a30d]' : ''}`} />
+                  <Icon name="refresh" className={`w-4 h-4 ${syncingId === selectedApp._id ? 'animate-spin text-[#4338ca]' : ''}`} />
                 </button>
                 <button
                   type="button"
@@ -1077,6 +1133,7 @@ export default function ApplicationHub() {
               { id: 'customers', label: `Subscribed Customers (${assignedClients.length})` },
               { id: 'features', label: `Screens & Modules (${featureMappingsList.length})` },
               { id: 'modes', label: `Solution Modes & Business Types (${solutionModesList.length})` },
+              { id: 'gateway', label: '🐳 Gateway & Tunnel Infrastructure' },
               { id: 'edit', label: '✏️ Edit Entire Application' }
             ].map((tab) => {
               const isActive = activeTab === tab.id;
@@ -1086,11 +1143,11 @@ export default function ApplicationHub() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`py-2.5 transition relative whitespace-nowrap ${
-                    isActive ? 'text-[#65a30d] font-bold' : 'text-slate-600 hover:text-slate-900'
+                    isActive ? 'text-[#4338ca] font-bold' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {tab.label}
-                  {isActive && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#84cc16]" />}
+                  {isActive && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#4f46e5]" />}
                 </button>
               );
             })}
@@ -1123,7 +1180,7 @@ export default function ApplicationHub() {
                       const url = buildCustomerUrl(c, smartSlug) || c.fullSaaSDomain || '';
 
                       return (
-                        <div key={c._id} className="p-3 bg-white rounded-xl border border-slate-200 shadow-xs flex items-center justify-between gap-3">
+                        <div key={c._id} className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-3">
                           <div>
                             <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
                               <span>{c.name}</span>
@@ -1162,12 +1219,12 @@ export default function ApplicationHub() {
                       disabled={extractingId === selectedApp._id}
                       className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 flex items-center gap-1.5 transition"
                     >
-                      <Icon name="refresh" className={`w-3.5 h-3.5 ${extractingId === selectedApp._id ? 'animate-spin text-[#65a30d]' : ''}`} />
+                      <Icon name="refresh" className={`w-3.5 h-3.5 ${extractingId === selectedApp._id ? 'animate-spin text-[#4338ca]' : ''}`} />
                       AI Scan Routes
                     </button>
                     <button
                       onClick={handleOpenAddScreen}
-                      className="px-3 py-1.5 bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition"
+                      className="px-3 py-1.5 bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition"
                     >
                       <Icon name="plus" className="w-3.5 h-3.5" />
                       Add Screen Module
@@ -1182,7 +1239,7 @@ export default function ApplicationHub() {
                     <p className="text-[11px] text-slate-400 mt-1">Click &quot;Add Screen Module&quot; or &quot;AI Scan Routes&quot; to populate screens for this app.</p>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                     <table className="w-full text-left border-collapse">
                       <thead className="bg-slate-100/70 border-b border-slate-200 text-[11px] font-bold text-slate-600">
                         <tr>
@@ -1247,7 +1304,7 @@ export default function ApplicationHub() {
                   </div>
                   <button
                     onClick={handleOpenAddMode}
-                    className="px-3 py-1.5 bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition"
+                    className="px-3 py-1.5 bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition"
                   >
                     <Icon name="plus" className="w-3.5 h-3.5" />
                     Create Solution Mode
@@ -1263,13 +1320,13 @@ export default function ApplicationHub() {
                 ) : (
                   <div className="space-y-5">
                     {solutionModesList.map((m, i) => (
-                      <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+                      <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                         {/* Mode Header Bar */}
                         <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="flex items-start gap-3">
                             <span
-                              className="w-4 h-4 rounded-full flex-shrink-0 mt-1 shadow-xs"
-                              style={{ backgroundColor: m.badgeColor || '#84cc16' }}
+                              className="w-4 h-4 rounded-full flex-shrink-0 mt-1 shadow-sm"
+                              style={{ backgroundColor: m.badgeColor || '#4f46e5' }}
                             />
                             <div>
                               <div className="flex items-center gap-2 flex-wrap">
@@ -1304,7 +1361,7 @@ export default function ApplicationHub() {
                             <button
                               type="button"
                               onClick={() => handleOpenAddBt(i)}
-                              className="px-3 py-1.5 bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] text-xs font-bold rounded-lg shadow-xs flex items-center gap-1.5 transition"
+                              className="px-3 py-1.5 bg-[#4f46e5] hover:bg-[#4338ca] text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition"
                             >
                               <Icon name="plus" className="w-3.5 h-3.5 stroke-[2.5]" /> Add Business Type
                             </button>
@@ -1429,9 +1486,201 @@ export default function ApplicationHub() {
               </div>
             )}
 
+            {/* TAB: Gateway & Cloudflare Tunnel Settings (Application Level) */}
+            {activeTab === 'gateway' && (
+              <div className="space-y-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm w-full">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-[#4f46e5] flex items-center justify-center font-bold text-lg">
+                      🐳
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-900">
+                        WAHA Gateway / Cloudflare Tunnel Settings
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Configure master gateway and public Cloudflare Tunnel URL so cloud instances reach local Docker engine.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleProbeGateway}
+                      disabled={gatewayProbing}
+                      className="px-3 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <Icon name="refresh" className={`w-3.5 h-3.5 ${gatewayProbing ? 'animate-spin text-[#4f46e5]' : ''}`} />
+                      {gatewayProbing ? 'Probing Gateway...' : 'Test Connection'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveGateway}
+                      disabled={savingGateway}
+                      className="px-4 py-2 text-xs font-extrabold text-white bg-[#0f172a] hover:bg-[#1e293b] rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {savingGateway ? 'Saving...' : 'Save Settings'}
+                    </button>
+                  </div>
+                </div>
+
+                {gatewayProbeResult && (
+                  <div
+                    className={`p-3.5 rounded-xl border text-xs font-semibold flex items-center justify-between ${
+                      gatewayProbeResult.success
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                        : 'bg-rose-50 border-rose-200 text-rose-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{gatewayProbeResult.success ? '🟢' : '🔴'}</span>
+                      <span>{gatewayProbeResult.message || (gatewayProbeResult.success ? 'Gateway Online & Reachable' : 'Connection Failed')}</span>
+                    </div>
+                    {gatewayProbeResult.latency && (
+                      <span className="font-mono text-[11px] opacity-80 bg-white/70 px-2 py-0.5 rounded border">
+                        {gatewayProbeResult.latency}ms latency
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Gateway API URL (Cloudflare Tunnel or Local Host)
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.gatewayConfig?.wahaApiUrl || ''}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          gatewayConfig: {
+                            ...(editForm.gatewayConfig || {}),
+                            wahaApiUrl: e.target.value
+                          }
+                        })
+                      }
+                      placeholder="e.g. https://himself-union-simplified-region.trycloudflare.com"
+                      className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#4f46e5] text-slate-800 bg-white"
+                    />
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditForm({
+                            ...editForm,
+                            gatewayConfig: {
+                              ...(editForm.gatewayConfig || {}),
+                              wahaApiUrl: 'https://himself-union-simplified-region.trycloudflare.com'
+                            }
+                          })
+                        }
+                        className="text-[10px] font-bold text-[#4f46e5] hover:underline"
+                      >
+                        Use Active Cloudflare Tunnel
+                      </button>
+                      <span className="text-slate-300">·</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditForm({
+                            ...editForm,
+                            gatewayConfig: {
+                              ...(editForm.gatewayConfig || {}),
+                              wahaApiUrl: 'http://localhost:3000'
+                            }
+                          })
+                        }
+                        className="text-[10px] font-bold text-slate-500 hover:underline"
+                      >
+                        Reset to Localhost:3000
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700">
+                        WAHA API Key (<code className="font-mono text-[10px] text-slate-500">X-Api-Key</code>)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowGatewayApiKey(!showGatewayApiKey)}
+                        className="text-[11px] font-bold text-[#4f46e5] hover:text-[#4338ca]"
+                      >
+                        {showGatewayApiKey ? 'Hide Key' : 'Show Key'}
+                      </button>
+                    </div>
+                    <input
+                      type={showGatewayApiKey ? 'text' : 'password'}
+                      value={editForm.gatewayConfig?.wahaApiKey || ''}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          gatewayConfig: {
+                            ...(editForm.gatewayConfig || {}),
+                            wahaApiKey: e.target.value
+                          }
+                        })
+                      }
+                      placeholder="Enter or paste WAHA API Key"
+                      className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#4f46e5] text-slate-800 bg-white"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1.5">
+                      Subscribed customer instances will communicate securely via this master API gateway without exposing credentials to end users.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Default Session Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.gatewayConfig?.wahaSessionName || 'default'}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          gatewayConfig: {
+                            ...(editForm.gatewayConfig || {}),
+                            wahaSessionName: e.target.value
+                          }
+                        })
+                      }
+                      placeholder="default or apx-wa01"
+                      className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#4f46e5] text-slate-800 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      Public Webhook Host
+                    </label>
+                    <input
+                      type="text"
+                      value={editForm.gatewayConfig?.tunnelUrl || ''}
+                      onChange={(e) =>
+                        setEditForm({
+                          ...editForm,
+                          gatewayConfig: {
+                            ...(editForm.gatewayConfig || {}),
+                            tunnelUrl: e.target.value
+                          }
+                        })
+                      }
+                      placeholder="e.g. https://api.renicsoft.com"
+                      className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#4f46e5] text-slate-800 bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* TAB 4: Edit App Settings */}
             {activeTab === 'edit' && (
-              <form onSubmit={handleUpdateApp} className="space-y-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs w-full">
+              <form onSubmit={handleUpdateApp} className="space-y-4 bg-white p-5 rounded-xl border border-slate-200 shadow-sm w-full">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Application Name *</label>
@@ -1440,7 +1689,7 @@ export default function ApplicationHub() {
                       required
                       value={editForm.name || ''}
                       onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                      className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                      className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                     />
                   </div>
                   <div>
@@ -1451,7 +1700,7 @@ export default function ApplicationHub() {
                       placeholder="e.g. TEXTILE_POS"
                       value={editForm.appCode || ''}
                       onChange={(e) => setEditForm({ ...editForm, appCode: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '') })}
-                      className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                      className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                     />
                   </div>
                 </div>
@@ -1463,7 +1712,7 @@ export default function ApplicationHub() {
                       type="text"
                       value={editForm.urlSlug || ''}
                       onChange={(e) => setEditForm({ ...editForm, urlSlug: e.target.value.toLowerCase() })}
-                      className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                      className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                     />
                   </div>
                   <div>
@@ -1484,7 +1733,7 @@ export default function ApplicationHub() {
                       type="number"
                       value={editForm.defaultPort || 5000}
                       onChange={(e) => setEditForm({ ...editForm, defaultPort: Number(e.target.value) })}
-                      className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                      className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                     />
                   </div>
                 </div>
@@ -1496,7 +1745,7 @@ export default function ApplicationHub() {
                     placeholder="e.g. D:/Development/MyNewApp or https://github.com/..."
                     value={editForm.localRepoPath || editForm.githubUrl || ''}
                     onChange={(e) => setEditForm({ ...editForm, localRepoPath: e.target.value, githubUrl: e.target.value })}
-                    className="w-full px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
 
@@ -1509,7 +1758,7 @@ export default function ApplicationHub() {
                     placeholder="e.g. https://simplebilling-pi.vercel.app or https://pawn-broking-svr6.vercel.app"
                     value={editForm.frontendUrl || ''}
                     onChange={(e) => setEditForm({ ...editForm, frontendUrl: e.target.value })}
-                    className="w-full px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                   <p className="text-[11px] text-slate-500 mt-1">
                     Client launch URLs are auto-generated from this URL: <code className="bg-slate-100 px-1 py-0.5 rounded text-emerald-700 font-mono font-bold">&#123;frontendUrl&#125;?tenant=&#123;customerCode&#125;</code>
@@ -1523,7 +1772,7 @@ export default function ApplicationHub() {
                     value={editForm.description || ''}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                     placeholder="Describe application features..."
-                    className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
 
@@ -1531,7 +1780,7 @@ export default function ApplicationHub() {
                   <button
                     type="submit"
                     disabled={editSubmitting}
-                    className="px-5 py-2 text-xs font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-xs transition"
+                    className="px-5 py-2 text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded-lg shadow-sm transition"
                   >
                     {editSubmitting ? 'Saving Settings...' : 'Save App Settings'}
                   </button>
@@ -1559,7 +1808,7 @@ export default function ApplicationHub() {
                   type="button"
                   onClick={handleUpdateApp}
                   disabled={editSubmitting}
-                  className="px-5 py-1.5 text-xs font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-xs transition"
+                  className="px-5 py-1.5 text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded-lg shadow-sm transition"
                 >
                   {editSubmitting ? 'Saving...' : 'Save Settings'}
                 </button>
@@ -1585,7 +1834,7 @@ export default function ApplicationHub() {
                   placeholder="e.g. Sales Reports & Margins"
                   value={screenForm.customDisplayName}
                   onChange={(e) => setScreenForm({ ...screenForm, customDisplayName: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                  className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                 />
               </div>
               <div>
@@ -1596,7 +1845,7 @@ export default function ApplicationHub() {
                   placeholder="e.g. salesReports"
                   value={screenForm.technicalTarget}
                   onChange={(e) => setScreenForm({ ...screenForm, technicalTarget: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                  className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                 />
               </div>
             </div>
@@ -1609,7 +1858,7 @@ export default function ApplicationHub() {
                   placeholder="e.g. Sales & Billing, CRM, Inventory"
                   value={screenForm.folderCategory}
                   onChange={(e) => setScreenForm({ ...screenForm, folderCategory: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                  className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                 />
               </div>
               <div>
@@ -1619,7 +1868,7 @@ export default function ApplicationHub() {
                   placeholder="e.g. /sales-reports"
                   value={screenForm.screenPath}
                   onChange={(e) => setScreenForm({ ...screenForm, screenPath: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                  className="w-full px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                 />
               </div>
             </div>
@@ -1631,7 +1880,7 @@ export default function ApplicationHub() {
                 placeholder="Details about what this screen does..."
                 value={screenForm.description}
                 onChange={(e) => setScreenForm({ ...screenForm, description: e.target.value })}
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
               />
             </div>
 
@@ -1641,7 +1890,7 @@ export default function ApplicationHub() {
                   type="checkbox"
                   checked={screenForm.defaultEnabled}
                   onChange={(e) => setScreenForm({ ...screenForm, defaultEnabled: e.target.checked })}
-                  className="rounded border-slate-300 text-[#84cc16] focus:ring-[#84cc16]"
+                  className="rounded border-slate-300 text-[#4f46e5] focus:ring-[#4f46e5]"
                 />
                 <span>Enabled by default in standard plans</span>
               </label>
@@ -1657,7 +1906,7 @@ export default function ApplicationHub() {
                 <button
                   type="submit"
                   disabled={savingFeatures}
-                  className="px-5 py-1.5 text-xs font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-xs"
+                  className="px-5 py-1.5 text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded-lg shadow-sm"
                 >
                   {savingFeatures ? 'Saving...' : 'Save Screen'}
                 </button>
@@ -1691,7 +1940,7 @@ export default function ApplicationHub() {
                       modeKey: editingModeIndex >= 0 ? modeForm.modeKey : key
                     });
                   }}
-                  className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                  className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                 />
               </div>
               <div>
@@ -1702,7 +1951,7 @@ export default function ApplicationHub() {
                   placeholder="e.g. CLINIC_BOOKING"
                   value={modeForm.modeKey}
                   onChange={(e) => setModeForm({ ...modeForm, modeKey: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                  className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                 />
               </div>
             </div>
@@ -1721,7 +1970,7 @@ export default function ApplicationHub() {
                     type="text"
                     value={modeForm.badgeColor}
                     onChange={(e) => setModeForm({ ...modeForm, badgeColor: e.target.value })}
-                    className="flex-1 px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="flex-1 px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
               </div>
@@ -1732,7 +1981,7 @@ export default function ApplicationHub() {
                   placeholder="e.g. Calendar, Send, Bot, Sparkles"
                   value={modeForm.icon}
                   onChange={(e) => setModeForm({ ...modeForm, icon: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                  className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                 />
               </div>
             </div>
@@ -1744,7 +1993,7 @@ export default function ApplicationHub() {
                 placeholder="Target industry and what capabilities this mode unlocks..."
                 value={modeForm.description}
                 onChange={(e) => setModeForm({ ...modeForm, description: e.target.value })}
-                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
               />
             </div>
 
@@ -1757,7 +2006,7 @@ export default function ApplicationHub() {
                   <button
                     type="button"
                     onClick={() => setModeForm({ ...modeForm, defaultScreenKeys: featureMappingsList.map(f => f.technicalTarget || f.key) })}
-                    className="text-[11px] text-[#65a30d] font-bold hover:underline"
+                    className="text-[11px] text-[#4338ca] font-bold hover:underline"
                   >
                     Select All
                   </button>
@@ -1788,7 +2037,7 @@ export default function ApplicationHub() {
                             : cur.filter(k => k !== key);
                           setModeForm({ ...modeForm, defaultScreenKeys: updated });
                         }}
-                        className="rounded border-slate-300 text-[#84cc16] focus:ring-[#84cc16]"
+                        className="rounded border-slate-300 text-[#4f46e5] focus:ring-[#4f46e5]"
                       />
                       <span className="text-[11px] font-medium text-slate-800 truncate">
                         {f.customDisplayName || f.label || key}
@@ -1810,7 +2059,7 @@ export default function ApplicationHub() {
               <button
                 type="submit"
                 disabled={savingMode}
-                className="px-5 py-1.5 text-xs font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-xs"
+                className="px-5 py-1.5 text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded-lg shadow-sm"
               >
                 {savingMode ? 'Saving...' : 'Save Solution Mode'}
               </button>
@@ -1848,7 +2097,7 @@ export default function ApplicationHub() {
                         typeKey: editingBtIndex >= 0 ? btForm.typeKey : key
                       });
                     }}
-                    className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
                 <div>
@@ -1859,7 +2108,7 @@ export default function ApplicationHub() {
                     placeholder="e.g. HOTEL_BOOKING"
                     value={btForm.typeKey}
                     onChange={(e) => setBtForm({ ...btForm, typeKey: e.target.value.toUpperCase() })}
-                    className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs font-mono font-bold rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
               </div>
@@ -1878,7 +2127,7 @@ export default function ApplicationHub() {
                       type="text"
                       value={btForm.badgeColor}
                       onChange={(e) => setBtForm({ ...btForm, badgeColor: e.target.value })}
-                      className="flex-1 px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                      className="flex-1 px-3 py-1.5 text-xs font-mono rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                     />
                   </div>
                 </div>
@@ -1889,7 +2138,7 @@ export default function ApplicationHub() {
                     placeholder="e.g. Building, Hospital, Scissors, Activity"
                     value={btForm.icon}
                     onChange={(e) => setBtForm({ ...btForm, icon: e.target.value })}
-                    className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                    className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                   />
                 </div>
               </div>
@@ -1901,7 +2150,7 @@ export default function ApplicationHub() {
                   placeholder="Target market (e.g. Hotels, Resorts, Spas, Turfs, Clinics)..."
                   value={btForm.description}
                   onChange={(e) => setBtForm({ ...btForm, description: e.target.value })}
-                  className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#84cc16]"
+                  className="w-full px-3 py-1.5 text-xs rounded border border-slate-300 focus:outline-none focus:border-[#4f46e5]"
                 />
               </div>
             </div>
@@ -2058,7 +2307,7 @@ export default function ApplicationHub() {
               <button
                 type="submit"
                 disabled={savingBt}
-                className="px-5 py-1.5 text-xs font-bold text-[#0f172a] bg-[#84cc16] hover:bg-[#65a30d] rounded-lg shadow-xs"
+                className="px-5 py-1.5 text-xs font-bold text-white bg-[#4f46e5] hover:bg-[#4338ca] rounded-lg shadow-sm"
               >
                 {savingBt ? 'Saving...' : 'Save Business Profile'}
               </button>

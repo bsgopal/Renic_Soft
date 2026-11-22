@@ -311,14 +311,14 @@ export default function Users() {
       {/* ── 1. ULTRA-COMPACT ENTERPRISE HEADER (NO WASTED VERTICAL SPACE) ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200/90 shadow-2xs">
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#84cc16] flex items-center justify-center font-bold flex-shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#4f46e5] flex items-center justify-center font-bold flex-shrink-0">
             <Icon name="users" className="w-3.5 h-3.5" />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-sm font-black text-slate-900 tracking-tight">
               User &amp; Access Directory
             </h1>
-            <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-[#0f172a] text-[#84cc16]">
+            <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-[#0f172a] text-[#4f46e5]">
               Super Admin Console
             </span>
             <span className="text-[10px] font-mono text-slate-500 hidden md:inline">
@@ -331,7 +331,7 @@ export default function Users() {
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             onClick={() => openCreateModal('INTERNAL_USER')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#84cc16] hover:bg-[#72b012] text-[#0f172a] font-bold text-xs rounded-lg shadow-2xs transition active:scale-98"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#4f46e5] hover:bg-[#72b012] text-[#0f172a] font-bold text-xs rounded-lg shadow-2xs transition active:scale-98"
             title="Create internal Renic Soft staff / admin"
           >
             <Icon name="plus" className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -371,8 +371,8 @@ export default function Users() {
           <span className="text-sm font-black text-sky-900 font-mono">{stats.externalClients}</span>
         </div>
 
-        <div className="bg-white px-3 py-1.5 rounded-lg border border-lime-200/80 shadow-2xs flex items-center justify-between col-span-2 sm:col-span-1">
-          <span className="text-[10px] font-bold text-[#65a30d] uppercase tracking-wider">Active</span>
+        <div className="bg-white px-3 py-1.5 rounded-lg border border-indigo-200/80 shadow-2xs flex items-center justify-between col-span-2 sm:col-span-1">
+          <span className="text-[10px] font-bold text-[#4338ca] uppercase tracking-wider">Active</span>
           <span className="text-sm font-black text-slate-900 font-mono">
             {stats.active} <span className="text-[10px] font-normal text-slate-400">/{stats.total}</span>
           </span>
@@ -399,7 +399,7 @@ export default function Users() {
             >
               <span>{tab.label}</span>
               <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${
-                categoryTab === tab.id ? 'bg-[#84cc16] text-[#0f172a]' : 'bg-slate-200/80 text-slate-600'
+                categoryTab === tab.id ? 'bg-[#4f46e5] text-[#0f172a]' : 'bg-slate-200/80 text-slate-600'
               }`}>
                 {tab.count}
               </span>
@@ -417,7 +417,7 @@ export default function Users() {
               placeholder="Search user / mobile..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-hidden focus:border-[#84cc16] focus:bg-white"
+              className="w-full pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-hidden focus:border-[#4f46e5] focus:bg-white"
             />
             {search && (
               <button
@@ -433,7 +433,7 @@ export default function Users() {
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16]"
+            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#4f46e5]"
           >
             <option value="ALL">All Roles</option>
             <option value="SUPER_ADMIN">Super Admin</option>
@@ -445,7 +445,7 @@ export default function Users() {
           <select
             value={appFilter}
             onChange={(e) => setAppFilter(e.target.value)}
-            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16] max-w-[130px] truncate"
+            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#4f46e5] max-w-[130px] truncate"
           >
             <option value="ALL">All Apps</option>
             {applications.map((app) => (
@@ -459,7 +459,7 @@ export default function Users() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#84cc16]"
+            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 text-xs focus:outline-hidden focus:border-[#4f46e5]"
           >
             <option value="ALL">All Status</option>
             <option value="ACTIVE">Active</option>
@@ -490,7 +490,7 @@ export default function Users() {
       <div className="w-full bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
         {loading ? (
           <div className="py-12 text-center text-slate-400 text-xs font-bold flex items-center justify-center gap-2">
-            <Icon name="refresh" className="w-4 h-4 animate-spin text-[#84cc16]" />
+            <Icon name="refresh" className="w-4 h-4 animate-spin text-[#4f46e5]" />
             <span>Loading user directory...</span>
           </div>
         ) : filteredUsers.length === 0 ? (
@@ -699,7 +699,7 @@ export default function Users() {
             {/* Modal Header */}
             <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#84cc16] text-[#0f172a] flex items-center justify-center font-bold">
+                <div className="w-9 h-9 rounded-xl bg-[#4f46e5] text-[#0f172a] flex items-center justify-center font-bold">
                   <Icon name={editingUser ? 'edit' : 'plus'} className="w-5 h-5" />
                 </div>
                 <div>
@@ -737,12 +737,12 @@ export default function Users() {
                       }}
                       className={`p-3 rounded-2xl border text-left transition flex items-center gap-3 ${
                         accountType === 'INTERNAL_USER'
-                          ? 'border-[#0f172a] bg-slate-900 text-white shadow-xs'
+                          ? 'border-[#0f172a] bg-slate-900 text-white shadow-sm'
                           : 'border-slate-200 hover:border-slate-300 bg-white text-slate-800'
                       }`}
                     >
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        accountType === 'INTERNAL_USER' ? 'bg-[#84cc16] text-[#0f172a]' : 'bg-slate-100 text-slate-700'
+                        accountType === 'INTERNAL_USER' ? 'bg-[#4f46e5] text-[#0f172a]' : 'bg-slate-100 text-slate-700'
                       }`}>
                         <Icon name="key" className="w-4 h-4" />
                       </div>
@@ -762,7 +762,7 @@ export default function Users() {
                       }}
                       className={`p-3 rounded-2xl border text-left transition flex items-center gap-3 ${
                         accountType === 'EXTERNAL_CLIENT'
-                          ? 'border-sky-600 bg-sky-600 text-white shadow-xs'
+                          ? 'border-sky-600 bg-sky-600 text-white shadow-sm'
                           : 'border-slate-200 hover:border-slate-300 bg-white text-slate-800'
                       }`}
                     >
@@ -794,7 +794,7 @@ export default function Users() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="e.g. John Doe"
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:border-[#84cc16]"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:border-[#4f46e5]"
                   />
                 </div>
 
@@ -810,7 +810,7 @@ export default function Users() {
                     disabled={editingUser?.isPermanentSuperAdmin}
                     onChange={(e) => setFormData({ ...formData, mobile: e.target.value.replace(/\D/g, '') })}
                     placeholder="10-digit mobile number"
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-hidden focus:border-[#84cc16] disabled:opacity-60"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-hidden focus:border-[#4f46e5] disabled:opacity-60"
                   />
                 </div>
 
@@ -823,7 +823,7 @@ export default function Users() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="e.g. user@domain.com"
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-[#84cc16]"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-[#4f46e5]"
                   />
                 </div>
 
@@ -837,7 +837,7 @@ export default function Users() {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder={editingUser ? '••••••••' : 'Min 6 characters'}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-[#84cc16]"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:border-[#4f46e5]"
                   />
                 </div>
               </div>
@@ -952,7 +952,7 @@ export default function Users() {
                           onClick={() => handleToggleApplication(app.appCode)}
                           className={`p-3 rounded-xl border-2 cursor-pointer transition flex items-start gap-2.5 ${
                             isSelected
-                              ? 'bg-white border-emerald-500 shadow-xs'
+                              ? 'bg-white border-emerald-500 shadow-sm'
                               : 'bg-white/60 border-slate-200 opacity-60 hover:opacity-100'
                           }`}
                         >
@@ -1057,7 +1057,7 @@ export default function Users() {
                           onClick={() => handleTogglePage(m.path)}
                           className={`p-2.5 rounded-xl border cursor-pointer transition flex items-start gap-2.5 ${
                             isChecked
-                              ? 'bg-white border-[#84cc16] shadow-xs'
+                              ? 'bg-white border-[#4f46e5] shadow-sm'
                               : 'bg-slate-100/60 border-slate-200 opacity-60 hover:opacity-100'
                           }`}
                         >
@@ -1065,7 +1065,7 @@ export default function Users() {
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => {}}
-                            className="mt-0.5 rounded text-[#84cc16] focus:ring-[#84cc16]"
+                            className="mt-0.5 rounded text-[#4f46e5] focus:ring-[#4f46e5]"
                           />
                           <div className="min-w-0 flex-1">
                             <div className="font-bold text-slate-900 text-xs flex items-center justify-between">
@@ -1116,7 +1116,7 @@ export default function Users() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 rounded-xl text-xs font-black bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] transition shadow-xs disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-[#4f46e5] hover:bg-[#4338ca] text-white transition shadow-sm disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : editingUser ? 'Update Account' : 'Create Account'}
                 </button>
@@ -1152,7 +1152,7 @@ export default function Users() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Enter new secure password..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-hidden focus:border-[#84cc16]"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-hidden focus:border-[#4f46e5]"
                 />
               </div>
 
@@ -1167,7 +1167,7 @@ export default function Users() {
                 <button
                   type="submit"
                   disabled={pwdSaving}
-                  className="px-4 py-2 rounded-xl text-xs font-black bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] shadow-xs disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl text-xs font-black bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-sm disabled:opacity-50"
                 >
                   {pwdSaving ? 'Resetting...' : 'Set New Password'}
                 </button>

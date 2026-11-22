@@ -75,7 +75,7 @@ export default function Reports() {
       {/* Compact Top Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200/90 shadow-2xs">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#84cc16] flex items-center justify-center font-bold flex-shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#4f46e5] flex items-center justify-center font-bold flex-shrink-0">
             <Icon name="bill" className="w-3.5 h-3.5" />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -119,7 +119,7 @@ export default function Reports() {
               onClick={() => setTab(t.key)}
               className={`px-3 py-1.5 text-left rounded-lg border transition-all flex items-center justify-between gap-2 shadow-2xs ${
                 isActive
-                  ? 'bg-white border-[#84cc16] ring-1 ring-[#84cc16]/50 shadow-xs'
+                  ? 'bg-white border-[#4f46e5] ring-1 ring-[#4f46e5]/50 shadow-sm'
                   : 'bg-white border-slate-200/90 hover:border-slate-300'
               }`}
             >
@@ -142,7 +142,7 @@ export default function Reports() {
             <Icon name="search" className="w-3.5 h-3.5" />
           </span>
           <input
-            className="w-full pl-8 pr-3 py-1 text-xs font-medium rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:border-[#84cc16]"
+            className="w-full pl-8 pr-3 py-1 text-xs font-medium rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:border-[#4f46e5]"
             placeholder="Search invoice #, customer name, phone..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -181,7 +181,7 @@ export default function Reports() {
               {loading ? (
                 <tr>
                   <td colSpan={9} className="text-center py-10 text-slate-400">
-                    <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto mb-1.5 text-[#65a30d]" />
+                    <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto mb-1.5 text-[#4338ca]" />
                     Loading report invoices...
                   </td>
                 </tr>
@@ -198,7 +198,7 @@ export default function Reports() {
                     className="hover:bg-slate-50/80 cursor-pointer transition"
                     onClick={() => navigate(`/billing/${b._id}`)}
                   >
-                    <td className="px-3.5 py-2 font-mono font-bold text-[#65a30d] text-xs">{b.invoiceNumber}</td>
+                    <td className="px-3.5 py-2 font-mono font-bold text-[#4338ca] text-xs">{b.invoiceNumber}</td>
                     <td className="px-3.5 py-2">
                       <div className="font-bold text-slate-900 text-xs">{b.customerName || 'Walk-in'}</div>
                       <div className="text-[10px] text-slate-400 font-mono">{b.customerPhone || '—'}</div>
@@ -212,7 +212,7 @@ export default function Reports() {
                     <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => navigate(`/billing/${b._id}`)}
-                        className="p-1 text-slate-500 hover:text-[#65a30d] hover:bg-slate-100 rounded transition"
+                        className="p-1 text-slate-500 hover:text-[#4338ca] hover:bg-slate-100 rounded transition"
                         title="View Full Invoice"
                       >
                         <Icon name="eye" className="w-3.5 h-3.5" />

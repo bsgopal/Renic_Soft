@@ -64,7 +64,7 @@ export default function AppDeployments() {
       {/* Compact Top Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200/90 shadow-2xs">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#84cc16] flex items-center justify-center font-bold flex-shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#4f46e5] flex items-center justify-center font-bold flex-shrink-0">
             <Icon name="gitBranch" className="w-3.5 h-3.5" />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -120,7 +120,7 @@ export default function AppDeployments() {
           onClick={() => setSelectedApp('ALL')}
           className={`px-3 py-1 text-xs font-bold rounded-lg transition whitespace-nowrap ${
             selectedApp === 'ALL'
-              ? 'bg-[#0f172a] text-[#84cc16] shadow-2xs'
+              ? 'bg-[#0f172a] text-[#4f46e5] shadow-2xs'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
@@ -132,7 +132,7 @@ export default function AppDeployments() {
             onClick={() => setSelectedApp(a.appCode)}
             className={`px-3 py-1 text-xs font-bold rounded-lg transition whitespace-nowrap ${
               selectedApp === a.appCode
-                ? 'bg-[#0f172a] text-[#84cc16] shadow-2xs'
+                ? 'bg-[#0f172a] text-[#4f46e5] shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
@@ -160,7 +160,7 @@ export default function AppDeployments() {
       ) : (
         <div className="space-y-2">
           {history.map((log) => (
-            <div key={log._id} className="bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-xs transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-3 border-l-4 border-l-emerald-500">
+            <div key={log._id} className="bg-white p-3 rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-sm transition-shadow flex flex-col md:flex-row md:items-center justify-between gap-3 border-l-4 border-l-emerald-500">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 px-2 py-0.5 rounded-lg border border-slate-200">
