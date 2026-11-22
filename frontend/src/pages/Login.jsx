@@ -101,7 +101,7 @@ export default function Login() {
                 <span className="text-xl font-black tracking-tight text-white">
                   RENIC TECHNOLOGY
                 </span>
-                <span className="px-2 py-0.5 text-[10px] font-black bg-[#84cc16] text-[#0f172a] rounded-md tracking-wider">
+                <span className="px-2 py-0.5 text-[10px] font-black bg-[#4f46e5] text-white rounded-md tracking-wider">
                   TECH
                 </span>
               </div>
@@ -114,7 +114,7 @@ export default function Login() {
           <div className="my-6 lg:my-8">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white leading-tight mb-3">
               Enterprise SaaS Management <br />
-              <span className="text-[#84cc16]">&amp; Master Billing HQ</span>
+              <span className="text-[#818cf8]">&amp; Master Billing HQ</span>
             </h2>
             <p className="text-slate-400 text-sm leading-relaxed max-w-lg">
               Centralized platform fleet administration, tenant licensing, multi-channel invoice dispatch, and high-security role orchestration.
@@ -124,7 +124,7 @@ export default function Login() {
           {/* Highlights */}
           <div className="space-y-4 my-6">
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-[#84cc16]/15 text-[#84cc16] mt-0.5">
+              <div className="p-2 rounded-xl bg-[#4f46e5]/15 text-[#818cf8] mt-0.5">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
@@ -136,7 +136,7 @@ export default function Login() {
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-[#84cc16]/15 text-[#84cc16] mt-0.5">
+              <div className="p-2 rounded-xl bg-[#4f46e5]/15 text-[#818cf8] mt-0.5">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                 </svg>
@@ -148,7 +148,7 @@ export default function Login() {
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-[#84cc16]/15 text-[#84cc16] mt-0.5">
+              <div className="p-2 rounded-xl bg-[#4f46e5]/15 text-[#818cf8] mt-0.5">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -165,20 +165,20 @@ export default function Login() {
         <div className="pt-6 border-t border-white/10 mt-6">
           <div className="space-y-1.5 text-xs text-slate-400 mb-3">
             <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-[#84cc16] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-[#818cf8] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
               <span>123, Main Road, Gobichettipalayam, Erode - 638452, TN, India</span>
             </div>
             <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-[#84cc16] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-[#818cf8] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
               <span>info@renictechnology.com · +91 88070 25752</span>
             </div>
             <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-[#84cc16] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-[#818cf8] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
               </svg>
               <span>www.renictechnology.com · GSTIN: 33AAAAA0000A1Z5</span>
@@ -224,7 +224,7 @@ export default function Login() {
               >
                 Sign In
                 {tab === 0 && (
-                  <span className="absolute bottom-[-13px] left-0 right-0 h-[3px] bg-[#84cc16] rounded-t-sm" />
+                  <span className="absolute bottom-[-13px] left-0 right-0 h-[3px] bg-[#4f46e5] rounded-t-sm" />
                 )}
               </button>
               <button
@@ -236,7 +236,7 @@ export default function Login() {
               >
                 Forgot Password
                 {tab === 1 && (
-                  <span className="absolute bottom-[-13px] left-0 right-0 h-[3px] bg-[#84cc16] rounded-t-sm" />
+                  <span className="absolute bottom-[-13px] left-0 right-0 h-[3px] bg-[#4f46e5] rounded-t-sm" />
                 )}
               </button>
             </div>
@@ -272,7 +272,7 @@ export default function Login() {
                     required
                     disabled={loginLoading}
                     placeholder="Enter registered mobile number"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#84cc16] focus:border-transparent text-slate-800 text-sm font-medium transition-all bg-slate-50/50 focus:bg-white"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#4f46e5] focus:border-transparent text-slate-800 text-sm font-medium transition-all bg-slate-50/50 focus:bg-white"
                   />
                 </div>
               </div>
@@ -294,7 +294,7 @@ export default function Login() {
                     required
                     disabled={loginLoading}
                     placeholder="Enter password"
-                    className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#84cc16] focus:border-transparent text-slate-800 text-sm font-medium transition-all bg-slate-50/50 focus:bg-white"
+                    className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#4f46e5] focus:border-transparent text-slate-800 text-sm font-medium transition-all bg-slate-50/50 focus:bg-white"
                   />
                   <button
                     type="button"
@@ -319,7 +319,7 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={loginLoading}
-                  className="w-full py-3.5 px-4 bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] font-extrabold text-sm rounded-xl shadow-lg shadow-[#84cc16]/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
+                  className="w-full py-3.5 px-4 bg-[#0f172a] hover:bg-[#1e293b] text-white font-extrabold text-sm rounded-xl shadow-lg shadow-slate-900/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
                 >
                   {loginLoading ? (
                     <svg className="animate-spin h-5 w-5 text-[#0f172a]" fill="none" viewBox="0 0 24 24">
@@ -366,13 +366,13 @@ export default function Login() {
                       required
                       disabled={fpLoading}
                       placeholder="e.g. 9345578103"
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#84cc16] text-slate-800 text-sm font-medium"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#4f46e5] text-slate-800 text-sm font-medium"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={fpLoading}
-                    className="w-full py-3 px-4 bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] font-extrabold text-sm rounded-xl transition-all shadow-md"
+                    className="w-full py-3 px-4 bg-[#0f172a] hover:bg-[#1e293b] text-white font-extrabold text-sm rounded-xl transition-all shadow-md"
                   >
                     {fpLoading ? 'Sending...' : 'Send Reset OTP'}
                   </button>
@@ -392,7 +392,7 @@ export default function Login() {
                       required
                       disabled={fpLoading}
                       placeholder="Enter 6-digit OTP"
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#84cc16] text-slate-800 text-sm font-medium"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#4f46e5] text-slate-800 text-sm font-medium"
                     />
                   </div>
                   <div>
@@ -406,13 +406,13 @@ export default function Login() {
                       required
                       disabled={fpLoading}
                       placeholder="Configure new password"
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#84cc16] text-slate-800 text-sm font-medium"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#4f46e5] text-slate-800 text-sm font-medium"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={fpLoading}
-                    className="w-full py-3 px-4 bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] font-extrabold text-sm rounded-xl transition-all shadow-md"
+                    className="w-full py-3 px-4 bg-[#0f172a] hover:bg-[#1e293b] text-white font-extrabold text-sm rounded-xl transition-all shadow-md"
                   >
                     {fpLoading ? 'Updating...' : 'Confirm New Password'}
                   </button>
@@ -432,7 +432,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => { setTab(0); setFpStep(0); setFpMobile(''); setFpOtp(''); setFpNewPassword(''); setFpMessage(''); }}
-                    className="py-2.5 px-6 bg-[#84cc16] hover:bg-[#65a30d] text-[#0f172a] font-extrabold text-sm rounded-xl transition-all shadow-md"
+                    className="py-2.5 px-6 bg-[#0f172a] hover:bg-[#1e293b] text-white font-extrabold text-sm rounded-xl transition-all shadow-md"
                   >
                     Proceed to Sign In
                   </button>

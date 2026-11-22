@@ -151,7 +151,7 @@ export default function Layout({ children }) {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-white text-sm tracking-tight">Renic Soft</span>
-              <span className="text-[10px] bg-[#84cc16] text-[#0f172a] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">TECH</span>
+              <span className="text-[10px] bg-[#4f46e5] text-white font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">TECH</span>
               <span className="text-[10px] bg-slate-800 text-slate-400 font-mono px-1.5 py-0.5 rounded font-bold border border-slate-700 hidden sm:inline-block">Master HQ</span>
             </div>
           </div>
@@ -202,7 +202,7 @@ export default function Layout({ children }) {
               <div className="absolute right-0 top-10 w-[360px] max-w-[90vw] bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50 text-slate-800">
                 <div className="px-3.5 py-2.5 flex items-center justify-between border-b border-slate-100 bg-slate-50">
                   <h4 className="font-bold text-slate-900 text-xs">Notifications</h4>
-                  <button className="text-[11px] text-[#65a30d] font-semibold hover:underline" onClick={() => { setNotifOpen(false); navigate('/notifications'); }}>
+                  <button className="text-[11px] text-[#4f46e5] font-semibold hover:underline" onClick={() => { setNotifOpen(false); navigate('/notifications'); }}>
                     View all
                   </button>
                 </div>
@@ -245,7 +245,7 @@ export default function Layout({ children }) {
                 {isSuperAdmin ? 'Super Admin' : user?.role === 'client' ? 'Client' : 'Admin'}
               </span>
             </div>
-            <div className="w-7 h-7 rounded-full bg-slate-800 text-[#84cc16] ring-1 ring-slate-700 flex items-center justify-center text-xs font-bold font-mono">
+            <div className="w-7 h-7 rounded-full bg-slate-800 text-[#818cf8] ring-1 ring-slate-700 flex items-center justify-center text-xs font-bold font-mono">
               {initials}
             </div>
             <button onClick={handleLogout} className="p-1 text-slate-400 hover:text-rose-400 rounded transition" title="Logout">
@@ -266,7 +266,7 @@ export default function Layout({ children }) {
               className={({ isActive }) =>
                 `flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition whitespace-nowrap ${
                   isActive
-                    ? 'bg-[#84cc16] text-[#0f172a] shadow-xs'
+                    ? 'bg-[#4f46e5] text-white shadow-xs'
                     : 'bg-slate-800/80 text-slate-300 border border-slate-700/80 hover:bg-slate-700 hover:text-white'
                 }`
               }
@@ -301,7 +301,7 @@ export default function Layout({ children }) {
                 className={({ isActive }) =>
                   `flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold transition group relative ${
                     isActive
-                      ? 'bg-[#84cc16] text-[#0f172a] shadow-xs'
+                      ? 'bg-[#4f46e5] text-white shadow-xs'
                       : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
                   }`
                 }
@@ -322,7 +322,7 @@ export default function Layout({ children }) {
                 )}
                 {!sidebarExpanded && (
                   <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#020617] text-white text-xs font-bold rounded-lg shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-150 z-50 whitespace-nowrap border border-slate-700 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#84cc16]" />
+                    <span className="w-2 h-2 rounded-full bg-[#4f46e5]" />
                     <span>{m.label}</span>
                     <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-[#020617]" />
                   </div>

@@ -33,7 +33,7 @@ export default function Dashboard() {
       {/* Compact Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200/90 shadow-2xs">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#84cc16] flex items-center justify-center font-bold flex-shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-[#0f172a] text-[#818cf8] flex items-center justify-center font-bold flex-shrink-0">
             <Icon name="dashboard" className="w-3.5 h-3.5" />
           </div>
           <div>
@@ -50,7 +50,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <Link
             to="/licenses"
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#84cc16] hover:bg-[#72b012] text-[#0f172a] text-xs font-bold rounded-lg shadow-2xs transition"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#0f172a] hover:bg-[#1e293b] text-white text-xs font-bold rounded-lg shadow-2xs transition"
           >
             <Icon name="plus" className="w-3 h-3 stroke-[2.5]" /> Launch Instance
           </Link>
@@ -65,7 +65,7 @@ export default function Dashboard() {
 
       {loading ? (
         <div className="text-center py-12 text-slate-400">
-          <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto text-[#65a30d] mb-1.5" />
+          <Icon name="refresh" className="w-5 h-5 animate-spin mx-auto text-[#4f46e5] mb-1.5" />
           <p className="text-xs font-medium">Loading platform metrics...</p>
         </div>
       ) : (
@@ -73,7 +73,7 @@ export default function Dashboard() {
           {/* Top Metric Cards (Compact Enterprise Grid) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             {cards.map((c) => (
-              <Link key={c.label} to={c.to} className="bg-white p-2.5 rounded-lg border border-slate-200/90 shadow-2xs hover:border-[#84cc16] hover:shadow-xs transition group">
+              <Link key={c.label} to={c.to} className="bg-white p-2.5 rounded-lg border border-slate-200/90 shadow-2xs hover:border-[#4f46e5] hover:shadow-xs transition group">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{c.label}</span>
                   <div className={`w-6 h-6 rounded-md flex items-center justify-center ${c.color} group-hover:scale-105 transition`}>
@@ -93,13 +93,13 @@ export default function Dashboard() {
                 <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
                   <Icon name="quote" className="w-3 h-3 text-violet-600" /> Recent Quotations
                 </h3>
-                <Link to="/quotes" className="text-[11px] text-[#65a30d] font-bold hover:underline">View all →</Link>
+                <Link to="/quotes" className="text-[11px] text-[#4f46e5] font-bold hover:underline">View all →</Link>
               </div>
               <div className="divide-y divide-slate-100 text-xs">
                 {data?.recentQuotes?.length ? data.recentQuotes.map((q) => (
                   <Link key={q._id} to={`/quotes`} className="flex items-center justify-between px-3.5 py-2 hover:bg-slate-50 transition">
                     <div>
-                      <div className="font-bold text-[#65a30d] text-xs">{q.quoteNumber}</div>
+                      <div className="font-bold text-[#4f46e5] text-xs">{q.quoteNumber}</div>
                       <div className="text-[10px] text-slate-400">{q.customerName || 'Walk-in'} · {new Date(q.quoteDate).toLocaleDateString()}</div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -108,7 +108,7 @@ export default function Dashboard() {
                     </div>
                   </Link>
                 )) : (
-                  <div className="px-4 py-6 text-center text-xs text-slate-400">No quotations yet. <Link to="/quotes" className="text-[#65a30d] font-bold">Create one →</Link></div>
+                  <div className="px-4 py-6 text-center text-xs text-slate-400">No quotations yet. <Link to="/quotes" className="text-[#4f46e5] font-bold">Create one →</Link></div>
                 )}
               </div>
             </div>
@@ -119,7 +119,7 @@ export default function Dashboard() {
                 <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
                   <Icon name="bill" className="w-3 h-3 text-emerald-600" /> Recent Invoices
                 </h3>
-                <Link to="/billing" className="text-[11px] text-[#65a30d] font-bold hover:underline">View all →</Link>
+                <Link to="/billing" className="text-[11px] text-[#4f46e5] font-bold hover:underline">View all →</Link>
               </div>
               <div className="divide-y divide-slate-100 text-xs">
                 {data?.recentBills?.length ? data.recentBills.map((b) => (
@@ -134,7 +134,7 @@ export default function Dashboard() {
                     </div>
                   </Link>
                 )) : (
-                  <div className="px-4 py-6 text-center text-xs text-slate-400">No invoices yet. <Link to="/billing" className="text-[#65a30d] font-bold">Create one →</Link></div>
+                  <div className="px-4 py-6 text-center text-xs text-slate-400">No invoices yet. <Link to="/billing" className="text-[#4f46e5] font-bold">Create one →</Link></div>
                 )}
               </div>
             </div>
