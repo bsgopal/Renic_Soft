@@ -55,7 +55,7 @@ export default function Billing() {
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [isPanelMaximized, setIsPanelMaximized] = useState(false);
-  const [splitPercent, setSplitPercent] = useState(30);
+  const [splitPercent, setSplitPercent] = useState(38);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
 
@@ -297,7 +297,7 @@ export default function Billing() {
     <div ref={containerRef} className="flex h-full w-full overflow-hidden bg-[#f4f6f8] text-slate-800 flex-1">
       {/* ============ LEFT COLUMN: INVOICE LIST TABLE (42% Width) ============ */}
       {!isPanelMaximized && (
-        <div style={{ width: mode ? `${splitPercent}%` : '100%', transition: isDragging ? 'none' : 'width 200ms ease' }} className="flex flex-col bg-white border-r border-slate-200 overflow-hidden flex-shrink-0">
+        <div style={{ width: `${splitPercent}%`, transition: isDragging ? 'none' : 'width 200ms ease' }} className="flex flex-col bg-white border-r border-slate-200 overflow-hidden flex-shrink-0">
           {/* Top Control Bar */}
           <div className="p-3 bg-white border-b border-slate-200 flex items-center justify-between gap-2 flex-shrink-0">
             <div className="relative flex-1">
@@ -438,12 +438,12 @@ export default function Billing() {
       )}
 
       {/* Draggable Resizer */}
-      {Boolean(mode) && !isPanelMaximized && (
+      {!isPanelMaximized && (
         <SplitDivider isDragging={isDragging} onMouseDown={() => setIsDragging(true)} />
       )}
 
-      {/* ============ RIGHT COLUMN: INVOICE STUDIO & EDITOR ============ */}
-      {Boolean(mode) && (
+      {/* ============ RIGHT COLUMN: INVOICE STUDIO & EDITOR OR ZERO STATE ============ */}
+      {Boolean(mode) ? (
         <div
           style={{ width: isPanelMaximized ? '100%' : `${100 - splitPercent}%`, transition: isDragging ? 'none' : 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)' }}
           className="flex flex-col bg-white overflow-hidden h-full flex-1 flex-shrink-0 animate-in fade-in slide-in-from-right-3 duration-300"
@@ -797,6 +797,110 @@ export default function Billing() {
                 'Save Invoice'
               )}
             </button>
+          </div>
+        </div>
+      ) : (
+        /* Zero-state Invoicing Console */
+        <div
+          style={{ width: `${100 - splitPercent}%`, transition: isDragging ? 'none' : 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+          className="flex flex-col bg-[#F8FAFC] overflow-y-auto h-full flex-1 animate-in fade-in duration-200"
+        >
+          {/* Header */}
+          <div className="p-4 sm:p-5 border-b border-slate-200 bg-white flex items-center justify-between flex-shrink-0">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700">
+                  <Icon name="bill" className="w-5 h-5" />
+                </span>
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                  Commercial Billing &amp; GST Invoicing Studio
+                </h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Automated GST (CGST/SGST vs IGST) · Instant UPI QR Payments · Automated PDF Engine
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-bold rounded-lg shadow-sm transition"
+            >
+              <Icon name="plus" className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Create New Invoice</span>
+            </button>
+          </div>
+
+          <div className="p-5 sm:p-6 space-y-6 flex-1">
+            {/* KPI Telemetry Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+                  <span>Total Invoiced</span>
+                  <span className="p-1 rounded bg-indigo-50 text-indigo-700"><Icon name="bill" className="w-3.5 h-3.5" /></span>
+                </div>
+                <div className="text-2xl font-black text-slate-900">
+                  {money(bills.reduce((sum, b) => sum + (Number(b.grandTotal) || 0), 0))}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">{bills.length} commercial invoices generated</div>
+              </div>
+
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+                  <span>Collected</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+                <div className="text-2xl font-black text-emerald-700">
+                  {money(bills.reduce((sum, b) => sum + (Number(b.amountPaid) || (b.status === 'Paid' ? Number(b.grandTotal) || 0 : 0)), 0))}
+                </div>
+                <div className="text-[11px] text-emerald-600 mt-1">Total revenue cleared</div>
+              </div>
+
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+                  <span>Outstanding Due</span>
+                  <span className="p-1 rounded bg-amber-50 text-amber-700"><Icon name="clock" className="w-3.5 h-3.5" /></span>
+                </div>
+                <div className="text-2xl font-black text-amber-700">
+                  {money(bills.filter(b => b.status !== 'Paid').reduce((sum, b) => sum + (Number(b.balanceDue || b.grandTotal) || 0), 0))}
+                </div>
+                <div className="text-[11px] text-amber-600 mt-1">Pending client remittance</div>
+              </div>
+            </div>
+
+            {/* Zero State Inspection Card */}
+            <div className="p-8 bg-white rounded-xl border border-slate-200 shadow-xs text-center flex flex-col items-center justify-center space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <Icon name="bill" className="w-7 h-7" />
+              </div>
+              <div className="max-w-md">
+                <h3 className="text-base font-bold text-slate-900">Select an Invoice to Preview &amp; Edit</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Click any invoice from the ledger on the left to inspect line items, adjust GST percentages, preview commercial PDFs, or generate 1-click WhatsApp dispatch links.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full max-w-lg pt-2 text-left">
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/80">
+                  <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <span>⚡</span> Instant UPI QR
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Embeds auto-calculated UPI intent link for instant scan &amp; pay.</div>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/80">
+                  <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <Icon name="shield" className="w-3.5 h-3.5 text-emerald-600" /> Automated GST
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Auto-splits CGST (9%) + SGST (9%) vs inter-state IGST (18%).</div>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/80">
+                  <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <Icon name="print" className="w-3.5 h-3.5 text-indigo-600" /> PDF Engine
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Vector print CSS rendering for official tax invoices.</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

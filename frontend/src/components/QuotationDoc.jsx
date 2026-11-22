@@ -123,10 +123,10 @@ export default function QuotationDoc({ quote = {}, company = {}, paymentDetails 
       <div className="rounded-xl overflow-hidden border border-slate-200 mb-6">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr style={{ backgroundColor: color, color: '#0F172A' }}>
-              <th className="py-3 px-4 text-center font-black text-xs w-14">S.No</th>
-              <th className="py-3 px-4 font-black text-xs">Project / Service</th>
-              <th className="py-3 px-4 text-right font-black text-xs w-44">Amount (INR)</th>
+            <tr style={{ backgroundColor: color, color: '#FFFFFF' }}>
+              <th className="py-3 px-4 text-center font-black text-xs w-14 text-white">S.No</th>
+              <th className="py-3 px-4 font-black text-xs text-white">Project / Service</th>
+              <th className="py-3 px-4 text-right font-black text-xs w-44 text-white">Amount (INR)</th>
             </tr>
           </thead>
           <tbody>
@@ -151,7 +151,7 @@ export default function QuotationDoc({ quote = {}, company = {}, paymentDetails 
                 Total Amount (INR)
               </td>
               <td
-                className="py-3.5 px-4 text-right font-black text-base text-slate-950 tracking-wide"
+                className="py-3.5 px-4 text-right font-black text-base text-white tracking-wide"
                 style={{ backgroundColor: color }}
               >
                 ₹ {(Number(quote.grandTotal) || 0).toLocaleString('en-IN')}

@@ -166,13 +166,13 @@ export default function InvoiceDoc({
       <div className="rounded-xl overflow-hidden border border-slate-200 mb-6">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr style={{ backgroundColor: color, color: '#0F172A' }}>
-              <th className="py-3 px-3.5 text-center font-black text-xs w-12">S.No</th>
-              <th className="py-3 px-3.5 font-black text-xs">Item Description</th>
-              <th className="py-3 px-3.5 text-center font-black text-xs w-16">Qty</th>
-              <th className="py-3 px-3.5 text-center font-black text-xs w-16">Unit</th>
-              <th className="py-3 px-3.5 text-right font-black text-xs w-32">Rate (₹)</th>
-              <th className="py-3 px-3.5 text-right font-black text-xs w-36">Total (₹)</th>
+            <tr style={{ backgroundColor: color, color: '#FFFFFF' }}>
+              <th className="py-3 px-3.5 text-center font-black text-xs w-12 text-white">S.No</th>
+              <th className="py-3 px-3.5 font-black text-xs text-white">Item Description</th>
+              <th className="py-3 px-3.5 text-center font-black text-xs w-16 text-white">Qty</th>
+              <th className="py-3 px-3.5 text-center font-black text-xs w-16 text-white">Unit</th>
+              <th className="py-3 px-3.5 text-right font-black text-xs w-32 text-white">Rate (₹)</th>
+              <th className="py-3 px-3.5 text-right font-black text-xs w-36 text-white">Total (₹)</th>
             </tr>
           </thead>
           <tbody>
@@ -219,16 +219,36 @@ export default function InvoiceDoc({
             </div>
           )}
 
-          {(bill.taxTotal > 0 || bill.taxRate > 0) && (
-            <div className="flex justify-between px-3.5 py-2 border-b border-slate-100 text-slate-600">
-              <span>GST / Tax Total</span>
-              <span className="font-bold text-slate-900">+{money(bill.taxTotal || (bill.grandTotal * (bill.taxRate || 0) / 100))}</span>
-            </div>
-          )}
+          {(bill.taxTotal > 0 || bill.taxRate > 0) && (() => {
+            const taxAmt = Number(bill.taxTotal || (bill.grandTotal * (bill.taxRate || 0) / 100)) || 0;
+            const gstinClean = String(bill.customerGSTIN || '').trim();
+            const isInterState = gstinClean.length >= 2 && !gstinClean.startsWith('33');
 
-          <div className="flex justify-between px-3.5 py-2.5 font-black text-sm" style={{ backgroundColor: color, color: '#0F172A' }}>
-            <span>GRAND TOTAL</span>
-            <span className="font-black text-base">{money(bill.grandTotal)}</span>
+            if (isInterState) {
+              return (
+                <div className="flex justify-between px-3.5 py-1.5 border-b border-slate-100 text-slate-600">
+                  <span>IGST (18%)</span>
+                  <span className="font-bold text-slate-900">+{money(taxAmt)}</span>
+                </div>
+              );
+            }
+            return (
+              <>
+                <div className="flex justify-between px-3.5 py-1.5 border-b border-slate-100 text-slate-600">
+                  <span>CGST (9%)</span>
+                  <span className="font-bold text-slate-900">+{money(taxAmt / 2)}</span>
+                </div>
+                <div className="flex justify-between px-3.5 py-1.5 border-b border-slate-100 text-slate-600">
+                  <span>SGST (9%)</span>
+                  <span className="font-bold text-slate-900">+{money(taxAmt / 2)}</span>
+                </div>
+              </>
+            );
+          })()}
+
+          <div className="flex justify-between px-3.5 py-2.5 font-black text-sm text-white" style={{ backgroundColor: color }}>
+            <span className="text-white">GRAND TOTAL</span>
+            <span className="font-black text-base text-white">{money(bill.grandTotal)}</span>
           </div>
 
           {Number(bill.amountPaid || 0) > 0 && (
@@ -245,18 +265,35 @@ export default function InvoiceDoc({
         </div>
       </div>
 
-      {/* 6. Payment & Bank Information */}
-      <div className="p-3.5 rounded-xl border border-slate-200 mb-5 text-xs bg-slate-50/70">
-        <h3 className="font-black uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: color }}>
-          💳 Payment Information
-        </h3>
-        <ul className="list-disc pl-5 text-slate-600 space-y-1">
-          {paymentDetails ? (
-            paymentDetails.split('\n').map((s) => s.trim()).filter(Boolean).map((t, i) => <li key={i}>{t}</li>)
-          ) : (
-            defaultPayment.map((t, i) => <li key={i}>{t}</li>)
-          )}
-        </ul>
+      {/* 6. Payment & Bank Information with Instant UPI QR Code */}
+      <div className="p-4 rounded-xl border border-slate-200 mb-5 text-xs bg-slate-50/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex-1">
+          <h3 className="font-black uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: color }}>
+            💳 Payment &amp; Bank Information
+          </h3>
+          <ul className="list-disc pl-5 text-slate-600 space-y-1">
+            {paymentDetails ? (
+              paymentDetails.split('\n').map((s) => s.trim()).filter(Boolean).map((t, i) => <li key={i}>{t}</li>)
+            ) : (
+              defaultPayment.map((t, i) => <li key={i}>{t}</li>)
+            )}
+          </ul>
+        </div>
+
+        {/* Dynamic UPI QR Code */}
+        <div className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col items-center justify-center shrink-0">
+          <img
+            src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(`upi://pay?pa=renictech@upi&pn=Renic%20Tech&am=${bill.grandTotal || 0}&cu=INR&tn=${encodeURIComponent(bill.invoiceNumber || 'INV')}`)}&size=100x100`}
+            alt="Scan to Pay via UPI"
+            className="w-20 h-20 object-contain rounded"
+          />
+          <span className="text-[10px] font-bold text-slate-800 mt-1 flex items-center gap-0.5">
+            <span>⚡</span> Scan &amp; Pay UPI
+          </span>
+          <span className="text-[9px] font-mono font-bold text-indigo-700">
+            {money(bill.grandTotal)}
+          </span>
+        </div>
       </div>
 
       {/* 7. Terms & Conditions Section */}
