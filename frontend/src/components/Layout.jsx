@@ -48,6 +48,8 @@ export default function Layout({ children }) {
 
   // Left sidebar starts expanded by default
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState('');
   const [notifs, setNotifs] = useState({ notifications: [], unreadCount: 0 });
   const [notifOpen, setNotifOpen] = useState(false);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
@@ -118,6 +120,21 @@ export default function Layout({ children }) {
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+      if (e.key === 'Escape') {
+        setCommandPaletteOpen(false);
+        setNotifOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -157,8 +174,20 @@ export default function Layout({ children }) {
           </div>
         </div>
 
-        {/* Right: Tunnel Status, Notifications, Profile */}
+        {/* Right: Search Jump, Tunnel Status, Notifications, Profile */}
         <div className="flex items-center gap-2.5 flex-shrink-0">
+          {/* Quick Jump Command Palette Trigger */}
+          <button
+            type="button"
+            onClick={() => setCommandPaletteOpen(true)}
+            className="hidden md:flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs transition font-medium"
+            title="Global Quick Jump (Ctrl+K)"
+          >
+            <Icon name="search" className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-slate-400">Search routes &amp; tools...</span>
+            <kbd className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-[10px] font-mono text-slate-400">Ctrl+K</kbd>
+          </button>
+
           {/* Cloudflare Tunnel Status Pill */}
           <div className="hidden sm:flex items-center gap-1.5 bg-slate-800/90 border border-slate-700 px-2.5 py-1 rounded-full text-[11px] text-slate-200">
             <span className="relative flex h-2 w-2">
@@ -349,6 +378,73 @@ export default function Layout({ children }) {
           {children}
         </main>
       </div>
+
+      {/* ── GLOBAL COMMAND PALETTE (CTRL+K) ── */}
+      {commandPaletteOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-start justify-center pt-20 px-4 animate-in fade-in duration-150"
+          onClick={() => setCommandPaletteOpen(false)}
+        >
+          <div
+            className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden text-slate-800 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Input Header */}
+            <div className="p-3.5 border-b border-slate-200 flex items-center gap-3">
+              <Icon name="search" className="w-5 h-5 text-indigo-600" />
+              <input
+                type="text"
+                autoFocus
+                value={commandQuery}
+                onChange={(e) => setCommandQuery(e.target.value)}
+                placeholder="Jump to any module, route or tool... (e.g. licenses, billing, apps)"
+                className="w-full text-sm font-semibold text-slate-900 focus:outline-none placeholder:text-slate-400"
+              />
+              <kbd className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-xs font-mono text-slate-500">ESC</kbd>
+            </div>
+
+            {/* Filtered Route Items */}
+            <div className="max-h-80 overflow-y-auto p-2 divide-y divide-slate-100 text-xs">
+              {visibleNavModules
+                .filter(m => !commandQuery.trim() || m.label.toLowerCase().includes(commandQuery.toLowerCase()) || m.to.toLowerCase().includes(commandQuery.toLowerCase()))
+                .map((m) => (
+                  <button
+                    key={m.to}
+                    type="button"
+                    onClick={() => {
+                      navigate(m.to);
+                      setCommandPaletteOpen(false);
+                      setCommandQuery('');
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl hover:bg-indigo-50 flex items-center justify-between text-left transition group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="p-1.5 rounded-lg bg-slate-100 text-slate-700 group-hover:bg-indigo-100 group-hover:text-indigo-700">
+                        <Icon name={m.icon} className="w-4 h-4" />
+                      </span>
+                      <div>
+                        <div className="font-bold text-slate-900 group-hover:text-indigo-700">{m.label}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">{m.to}</div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-400 group-hover:text-indigo-600">Jump ↵</span>
+                  </button>
+                ))}
+            </div>
+
+            {/* Quick Actions Footer */}
+            <div className="p-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+              <div className="flex items-center gap-2">
+                <span>Navigation:</span>
+                <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200">↑↓</span>
+                <span>Select:</span>
+                <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200">Enter</span>
+              </div>
+              <span className="text-indigo-700 font-semibold">Renic Soft HQ Core</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

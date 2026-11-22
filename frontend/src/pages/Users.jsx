@@ -1022,17 +1022,51 @@ export default function Users() {
 
                   {formData.role !== 'platform_owner' && formData.role !== 'super_admin' && (
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase mr-1">Role Presets:</span>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({
+                          ...prev,
+                          allowedPages: ['/', '/licenses', '/plan-tiers', '/applications', '/quotes', '/billing', '/reports']
+                        }))}
+                        className="px-2 py-0.5 text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded border border-indigo-200 transition"
+                        title="Assign Operations Manager routes"
+                      >
+                        Operations
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({
+                          ...prev,
+                          allowedPages: ['/', '/quotes', '/billing', '/reports']
+                        }))}
+                        className="px-2 py-0.5 text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded border border-emerald-200 transition"
+                        title="Assign Billing & Finance routes"
+                      >
+                        Billing &amp; Finance
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({
+                          ...prev,
+                          allowedPages: ['/', '/licenses', '/deployments', '/credentials', '/network', '/activity-report']
+                        }))}
+                        className="px-2 py-0.5 text-[10px] font-bold bg-sky-50 hover:bg-sky-100 text-sky-700 rounded border border-sky-200 transition"
+                        title="Assign DevOps & Infrastructure routes"
+                      >
+                        Infrastructure
+                      </button>
                       <button
                         type="button"
                         onClick={handleSelectAllPages}
-                        className="px-2 py-1 text-[10px] font-black bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-300 transition"
+                        className="px-2 py-0.5 text-[10px] font-bold bg-white hover:bg-slate-100 text-slate-700 rounded border border-slate-300 transition"
                       >
-                        Select All
+                        All
                       </button>
                       <button
                         type="button"
                         onClick={handleClearAllPages}
-                        className="px-2 py-1 text-[10px] font-black bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-300 transition"
+                        className="px-2 py-0.5 text-[10px] font-bold bg-white hover:bg-slate-100 text-slate-700 rounded border border-slate-300 transition"
                       >
                         Clear
                       </button>
