@@ -899,6 +899,21 @@ router.put('/:id', protect, authorize('platform_owner', 'admin'), async (req, re
         client.wallet.allowWithoutBalanceChangedBy = `${req.user?.name || 'Super Admin'} (${req.user?.mobile || '9345578103'})`;
       }
     }
+    if (req.body.messageRate !== undefined || req.body.wallet?.messageRate !== undefined) {
+      if (!client.wallet) {
+        client.wallet = { balance: 0, messageRate: 0.90, currency: 'INR' };
+      }
+      const newRate = Number(req.body.messageRate !== undefined ? req.body.messageRate : req.body.wallet?.messageRate);
+      if (newRate > 0 && client.wallet.messageRate !== newRate) {
+        client.wallet.messageRate = newRate;
+        client.wallet.rateHistory = client.wallet.rateHistory || [];
+        client.wallet.rateHistory.push({
+          rate: newRate,
+          changedAt: new Date(),
+          changedBy: `${req.user?.name || 'Super Admin'} (${req.user?.mobile || '9345578103'})`
+        });
+      }
+    }
     if (req.body.clientId && req.body.clientId.trim()) client.clientId = req.body.clientId.trim();
     if (req.body.clientSecret && req.body.clientSecret.trim()) {
       client.clientSecret = req.body.clientSecret.trim();

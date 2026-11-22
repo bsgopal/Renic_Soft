@@ -88,6 +88,19 @@ router.post('/push/:clientId', protect, authorize('platform_owner'), async (req,
         maxMonthlyMessages: 50000,
         maxConcurrentSessions: 2
       },
+      // Enterprise Client-Wise WhatsApp Wallet & Per-Message Rate
+      walletBalance: Number(client.wallet?.balance || 0),
+      messageRate: Number(client.wallet?.messageRate || 0.90),
+      availableCredits: Math.floor((client.wallet?.balance || 0) / (client.wallet?.messageRate || 0.90)),
+      allowWithoutBalance: !!client.wallet?.allowWithoutBalance,
+      lowBalanceThreshold: client.wallet?.lowBalanceThreshold || 200,
+      wallet: {
+        balance: Number(client.wallet?.balance || 0),
+        messageRate: Number(client.wallet?.messageRate || 0.90),
+        availableCredits: Math.floor((client.wallet?.balance || 0) / (client.wallet?.messageRate || 0.90)),
+        allowWithoutBalance: !!client.wallet?.allowWithoutBalance,
+        lowBalanceThreshold: client.wallet?.lowBalanceThreshold || 200
+      },
       clientId: client.clientId || (`renic_client_${client.subdomain || 'client'}`),
       clientSecret: client.clientSecret || '',
       clientSecretHash: client.clientSecretHash || '',

@@ -34,6 +34,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 
+// Enterprise Copyright, Security & Anti-Leak Headers
+app.use((req, res, next) => {
+  res.setHeader('X-Copyright', 'Renic Tech Private Limited (c) 2026. All rights reserved.');
+  res.setHeader('X-Powered-By', 'Renic Enterprise Core Engine');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  next();
+});
+
 // Restore original request URL if rewritten by Vercel serverless function
 app.use((req, res, next) => {
   if (req.query && req.query.__path !== undefined) {
@@ -247,10 +256,15 @@ if (fs.existsSync(distPath)) {
   });
 }
 
-// Global error handler
+// Global error handler (Sanitized to prevent internal code exposure)
 app.use((err, req, res, next) => {
-  console.error('[Global Error Handler]:', err);
-  res.status(err.status || 500).json({ message: err.message || 'Internal Server Error' });
+  console.error('[Global Error Handler]:', err?.message || err);
+  const isProd = process.env.NODE_ENV === 'production';
+  res.status(err.status || 500).json({ 
+    success: false,
+    message: isProd ? 'An internal server error occurred. Please contact system administrator.' : (err.message || 'Internal Server Error'),
+    copyright: '© 2026 Renic Tech Private Limited'
+  });
 });
 
 export default app;

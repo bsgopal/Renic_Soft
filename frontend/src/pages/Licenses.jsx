@@ -48,6 +48,8 @@ const DEFAULT_SHOP = {
   },
   oauthEnforced: true,
   allowWithoutBalance: false,
+  messageRate: 0.90,
+  walletBalance: 0,
   clientId: '',
   clientSecret: '',
   screenPermissions: {},
@@ -520,7 +522,9 @@ export default function Licenses() {
       wahaApiUrl: clientObj.wahaApiUrl || '',
       wahaApiKey: clientObj.wahaApiKey || '',
       wahaSessionName: clientObj.wahaSessionName || 'default',
-      allowWithoutBalance: !!clientObj.wallet?.allowWithoutBalance
+      allowWithoutBalance: !!clientObj.wallet?.allowWithoutBalance,
+      messageRate: clientObj.wallet?.messageRate !== undefined ? Number(clientObj.wallet.messageRate) : 0.90,
+      walletBalance: clientObj.wallet?.balance !== undefined ? Number(clientObj.wallet.balance) : 0
     });
 
     setWizardOpen(true);
@@ -1220,8 +1224,7 @@ export default function Licenses() {
                                 <span className="text-amber-600 dark:text-amber-400 font-extrabold">⚡ Bypass: No Balance Req.</span>
                               ) : (
                                 <span>
-                                  ₹{Number(c.wallet?.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })} (
-                                  {Math.floor((c.wallet?.balance || 0) / (c.wallet?.messageRate || 0.90)).toLocaleString('en-IN')} msgs)
+                                  ₹{Number(c.wallet?.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })} ({Math.floor((c.wallet?.balance || 0) / (c.wallet?.messageRate || 0.90)).toLocaleString('en-IN')} msgs @ ₹{c.wallet?.messageRate || 0.90}/msg)
                                 </span>
                               )}
                             </button>
@@ -1792,6 +1795,64 @@ export default function Licenses() {
                   >
                     {wizardForm.oauthEnforced ? 'YES' : 'NO'}
                   </button>
+                </div>
+
+                {/* Client-Wise WhatsApp Message Deduct Rate & Prepaid Pricing */}
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col gap-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <div className="p-2 bg-indigo-600 text-white font-bold rounded-lg text-sm mt-0.5 shadow-sm">
+                        💬
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                            Per-Message Deduct Rate (₹ / Message)
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300">
+                            Client-Specific Pricing
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          Amount automatically deducted from this client's wallet for each outbound WhatsApp message sent.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <div className="relative flex-1 sm:w-36">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₹</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          max="10.00"
+                          value={wizardForm.messageRate ?? 0.90}
+                          onChange={(e) => setWizardForm({ ...wizardForm, messageRate: parseFloat(e.target.value) || 0 })}
+                          className="w-full pl-7 pr-3 py-1.5 text-xs font-bold bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="0.90"
+                        />
+                      </div>
+                      <span className="text-xs text-slate-500 whitespace-nowrap">/ msg</span>
+                    </div>
+                  </div>
+
+                  {/* Live Credit Calculation Indicator */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[11px]">
+                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                      <span>Current Wallet Balance:</span>
+                      <span className="font-extrabold text-slate-900 dark:text-slate-100">
+                        ₹{Number(wizardForm.walletBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                      <span>Purchasing Power:</span>
+                      <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                        {wizardForm.messageRate > 0 
+                          ? Math.floor((wizardForm.walletBalance || 0) / wizardForm.messageRate).toLocaleString('en-IN') 
+                          : 0} msgs remaining
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Super Admin WhatsApp Prepaid Wallet & Message Bypass Governance */}

@@ -360,8 +360,8 @@ export default function Layout({ children }) {
             ))}
           </div>
 
-          {/* Bottom Sidebar Collapse / Expand Button */}
-          <div className="p-2 border-t border-slate-800">
+          {/* Bottom Sidebar Collapse / Expand Button & Enterprise Copyright */}
+          <div className="p-2 border-t border-slate-800 flex flex-col gap-1.5">
             <button
               onClick={() => setSidebarExpanded(!sidebarExpanded)}
               className="w-full flex items-center justify-center gap-2 p-2 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white text-xs font-bold transition"
@@ -370,6 +370,11 @@ export default function Layout({ children }) {
               <Icon name="expand" className={`w-4 h-4 transition-transform ${sidebarExpanded ? 'rotate-180' : ''}`} />
               {sidebarExpanded && <span>Collapse</span>}
             </button>
+            {sidebarExpanded && (
+              <div className="px-2 py-1 text-[10px] text-slate-500 font-medium tracking-tight text-center border-t border-slate-800/60 mt-1">
+                © 2026 Renic Tech Private Limited.<br/>All Rights Reserved.
+              </div>
+            )}
           </div>
         </aside>
 
