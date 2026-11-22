@@ -39,6 +39,28 @@ router.post('/push/:clientId', protect, authorize('platform_owner'), async (req,
       return res.status(404).json({ success: false, message: 'Client not found' });
     }
 
+    // Resolve Gateway & Cloudflare Tunnel Settings (inherits from ApplicationHub if tenant has no override)
+    let resolvedWahaUrl = client.wahaApiUrl || '';
+    let resolvedWahaKey = client.wahaApiKey || '';
+    let resolvedWahaSession = client.wahaSessionName || 'default';
+    if (!resolvedWahaUrl) {
+      try {
+        const app = await dbHelper.findOne('Application', {
+          $or: [
+            { appCode: client.softwareProduct || 'WA_INSTA_AUTOMATION' },
+            { name: client.softwareProduct || 'WA_INSTA_AUTOMATION' }
+          ]
+        });
+        if (app) {
+          resolvedWahaUrl = app.gatewayConfig?.wahaApiUrl || app.wahaApiUrl || '';
+          resolvedWahaKey = app.gatewayConfig?.wahaApiKey || app.wahaApiKey || '';
+          resolvedWahaSession = app.gatewayConfig?.wahaSessionName || app.wahaSessionName || 'default';
+        }
+      } catch (err) {
+        console.warn('[Sync] Application fallback gateway lookup warning:', err.message);
+      }
+    }
+
     const payload = {
       clientId: String(client._id),
       clientName: client.name,
@@ -58,9 +80,9 @@ router.post('/push/:clientId', protect, authorize('platform_owner'), async (req,
       featurePermissions: client.screenPermissions || client.featurePermissions || {},
       whatsappSenderMode: client.whatsappSenderMode || 'DOCKER',
       dockerThrottleSeconds: client.dockerThrottleSeconds || 6,
-      wahaApiUrl: client.wahaApiUrl || '',
-      wahaApiKey: client.wahaApiKey || '',
-      wahaSessionName: client.wahaSessionName || 'default',
+      wahaApiUrl: resolvedWahaUrl,
+      wahaApiKey: resolvedWahaKey,
+      wahaSessionName: resolvedWahaSession,
       limits: client.limits || {
         maxContacts: 10000,
         maxMonthlyMessages: 50000,
