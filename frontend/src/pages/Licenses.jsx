@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api.js';
 import { buildCustomerUrl, appSlugForProduct, appPortForProduct, backendPortForProduct } from '../utils/customerUrl.js';
@@ -175,7 +175,7 @@ export default function Licenses() {
 
   // Split Panel & Anchor Navigation
   const [isPanelMaximized, setIsPanelMaximized] = useState(false);
-  const [splitPercent, setSplitPercent] = useState(30);
+  const [splitPercent, setSplitPercent] = useState(38);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
 
@@ -764,16 +764,76 @@ export default function Licenses() {
     }
   };
 
+  // Fleet Telemetry KPI Statistics
+  const fleetStats = useMemo(() => {
+    let active = 0;
+    let expiring = 0;
+    let trial = 0;
+    let locked = 0;
+    const now = new Date();
+    clients.forEach((c) => {
+      const isExpired = new Date(c.licenseEnd) < now;
+      const daysLeft = Math.ceil((new Date(c.licenseEnd) - now) / (24 * 3600 * 1000));
+      const isLocked = Boolean(
+        c.securitySettings?.emergencyLock ||
+        ['locked', 'disabled', 'suspended', 'cancelled', 'inactive', 'revoked'].includes(c.licenseStatus)
+      );
+      if (isLocked) {
+        locked++;
+      } else if (c.isTrial || c.licenseStatus === 'trial') {
+        trial++;
+      } else if (isExpired || daysLeft <= 7) {
+        expiring++;
+      } else {
+        active++;
+      }
+    });
+    return {
+      total: clients.length,
+      active,
+      expiring,
+      trial,
+      locked
+    };
+  }, [clients]);
+
+  // Broadcast OTA sync across all active customer instances
+  const handleBroadcastSync = async () => {
+    const activeClients = clients.filter(c => c.licenseStatus === 'active');
+    if (activeClients.length === 0) {
+      showSnackbar('No active customer instances found to sync', 'info');
+      return;
+    }
+    showSnackbar(`Broadcasting OTA sync to ${activeClients.length} active instances...`, 'info');
+    let synced = 0;
+    for (const c of activeClients) {
+      try {
+        await api.post(`/sync/push/${c._id}`);
+        synced++;
+      } catch (e) {
+        // continue batch broadcast
+      }
+    }
+    showSnackbar(`⚡ Broadcast OTA sync completed for ${synced} instances!`, 'success');
+    fetchData();
+  };
+
   // Filter clients
   const filteredClients = clients.filter(c => {
     const matchesProduct = productFilter === 'ALL' || c.softwareProduct === productFilter;
     const isExpired = new Date(c.licenseEnd) < new Date();
     const daysLeft = Math.ceil((new Date(c.licenseEnd) - new Date()) / (24 * 3600 * 1000));
+    const isLocked = Boolean(
+      c.securitySettings?.emergencyLock ||
+      ['locked', 'disabled', 'suspended', 'cancelled', 'inactive', 'revoked'].includes(c.licenseStatus)
+    );
 
     let matchesStatus = true;
-    if (statusFilter === 'ACTIVE') matchesStatus = c.licenseStatus === 'active' && !isExpired;
-    else if (statusFilter === 'EXPIRING') matchesStatus = !isExpired && daysLeft <= 7;
+    if (statusFilter === 'ACTIVE') matchesStatus = c.licenseStatus === 'active' && !isExpired && !c.isTrial && !isLocked;
+    else if (statusFilter === 'EXPIRING') matchesStatus = !isExpired && daysLeft <= 7 && !isLocked;
     else if (statusFilter === 'EXPIRED') matchesStatus = isExpired;
+    else if (statusFilter === 'TRIAL') matchesStatus = Boolean(c.isTrial || c.licenseStatus === 'trial');
+    else if (statusFilter === 'LOCKED') matchesStatus = isLocked;
     else if (statusFilter === 'OAUTH_ENFORCED') matchesStatus = Boolean(c.oauthEnforced);
 
     const query = searchQuery.toLowerCase().trim();
@@ -904,7 +964,7 @@ export default function Licenses() {
       {/* ============ LEFT COLUMN: MASTER LIST TABLE (40-42% Width) ============ */}
       {!isPanelMaximized && (
         <div
-          style={{ width: wizardOpen ? `${splitPercent}%` : '100%', transition: isDragging ? 'none' : 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+          style={{ width: `${splitPercent}%`, transition: isDragging ? 'none' : 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)' }}
           className="flex flex-col bg-white border-r border-slate-200 overflow-hidden flex-shrink-0 transition-[width] duration-300 ease-in-out"
         >
           {/* Top Control Bar for Left Column */}
@@ -927,8 +987,9 @@ export default function Licenses() {
               className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition ${
                 showFilters ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-300'
               }`}
+              title="Filter by Software Application"
             >
-              Filters
+              Apps
             </button>
 
             <button
@@ -941,50 +1002,114 @@ export default function Licenses() {
 
             <button
               onClick={handleOpenCreateWizard}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#0f172a] hover:bg-[#1e293b] text-white font-bold text-xs rounded-lg shadow-sm transition"
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#4F46E5] hover:bg-[#4338CA] text-white font-bold text-xs rounded-lg shadow-sm transition"
             >
               <Icon name="plus" className="w-3.5 h-3.5 stroke-[2.5]" /> Launch Instance
             </button>
           </div>
 
-          {/* Optional Filter Pills Bar */}
+          {/* Quick Status Filter Pills Bar */}
+          <div className="px-3 py-1.5 bg-slate-50/90 border-b border-slate-200 flex items-center gap-1.5 overflow-x-auto text-xs flex-shrink-0 scrollbar-none">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('ALL')}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition flex items-center gap-1.5 shrink-0 ${
+                statusFilter === 'ALL'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <span>All</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === 'ALL' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                {fleetStats.total}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStatusFilter('ACTIVE')}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition flex items-center gap-1.5 shrink-0 ${
+                statusFilter === 'ACTIVE'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-emerald-50'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Active</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === 'ACTIVE' ? 'bg-emerald-800 text-white' : 'bg-emerald-50 text-emerald-700'}`}>
+                {fleetStats.active}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStatusFilter('EXPIRING')}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition flex items-center gap-1.5 shrink-0 ${
+                statusFilter === 'EXPIRING'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-amber-50'
+              }`}
+            >
+              <span>Expiring (≤7d)</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === 'EXPIRING' ? 'bg-amber-700 text-white' : 'bg-amber-50 text-amber-700 font-bold'}`}>
+                {fleetStats.expiring}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStatusFilter('TRIAL')}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition flex items-center gap-1.5 shrink-0 ${
+                statusFilter === 'TRIAL'
+                  ? 'bg-purple-700 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-purple-50'
+              }`}
+            >
+              <span>🧪 Trial</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === 'TRIAL' ? 'bg-purple-800 text-white' : 'bg-purple-50 text-purple-700'}`}>
+                {fleetStats.trial}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStatusFilter('LOCKED')}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition flex items-center gap-1.5 shrink-0 ${
+                statusFilter === 'LOCKED'
+                  ? 'bg-rose-700 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-rose-50'
+              }`}
+            >
+              <span>🔒 Locked</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === 'LOCKED' ? 'bg-rose-800 text-white' : 'bg-rose-50 text-rose-700'}`}>
+                {fleetStats.locked}
+              </span>
+            </button>
+          </div>
+
+          {/* Optional App Filter Bar */}
           {showFilters && (
-            <div className="bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center gap-2 text-xs flex-wrap flex-shrink-0">
-              <span className="font-bold text-slate-500 uppercase text-[10px]">App:</span>
+            <div className="bg-slate-100/80 border-b border-slate-200 px-3 py-2 flex items-center gap-1.5 text-xs flex-wrap flex-shrink-0 animate-in fade-in duration-150">
+              <span className="font-bold text-slate-500 uppercase text-[10px]">App Filter:</span>
               <button
                 onClick={() => setProductFilter('ALL')}
                 className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                  productFilter === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white border border-slate-300 text-slate-700'
+                  productFilter === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
                 }`}
               >
-                All ({clients.length})
+                All Apps ({clients.length})
               </button>
               {assignableApps.map(a => (
                 <button
                   key={a.appCode}
                   onClick={() => setProductFilter(a.appCode)}
                   className={`px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap ${
-                    productFilter === a.appCode ? 'bg-slate-800 text-white' : 'bg-white border border-slate-300 text-slate-700'
+                    productFilter === a.appCode ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
                   {a.name}
                 </button>
               ))}
-
-              <div className="h-3 w-px bg-slate-300 mx-1" />
-
-              <span className="font-bold text-slate-500 uppercase text-[10px]">Status:</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-2 py-0.5 rounded border border-slate-300 bg-white text-xs font-semibold text-slate-700"
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="ACTIVE">Active</option>
-                <option value="OAUTH_ENFORCED">OAuth Enforced</option>
-                <option value="EXPIRING">Expiring Soon</option>
-                <option value="EXPIRED">Expired</option>
-              </select>
             </div>
           )}
 
@@ -1185,12 +1310,12 @@ export default function Licenses() {
       )}
 
       {/* Draggable Resizer */}
-      {wizardOpen && !isPanelMaximized && (
+      {!isPanelMaximized && (
         <SplitDivider isDragging={isDragging} onMouseDown={() => setIsDragging(true)} />
       )}
 
-      {/* ============ RIGHT COLUMN: OBJECT DETAIL & CONFIGURATION PAGE ============ */}
-      {wizardOpen && (
+      {/* ============ RIGHT COLUMN: OBJECT DETAIL & CONFIGURATION PAGE OR FLEET CONSOLE ============ */}
+      {wizardOpen ? (
         <div
           style={{ width: isPanelMaximized ? '100%' : `${100 - splitPercent}%`, transition: isDragging ? 'none' : 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)' }}
           className="flex flex-col bg-white overflow-hidden h-full flex-1 animate-in fade-in slide-in-from-right-3 duration-300"
@@ -1242,11 +1367,14 @@ export default function Licenses() {
                 )}
                 <button
                   type="button"
-                  onClick={() => setWizardOpen(false)}
+                  onClick={() => {
+                    setWizardOpen(false);
+                    setSelectedClient(null);
+                  }}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition shadow-sm"
-                  title="Back to Instance List"
+                  title="Back to Fleet Operations Console"
                 >
-                  <Icon name="arrow-left" className="w-3.5 h-3.5" /> Back
+                  <Icon name="arrow-left" className="w-3.5 h-3.5" /> Fleet Console
                 </button>
                 <button
                   type="button"
@@ -2732,6 +2860,145 @@ export default function Licenses() {
                 'Save & Push OTA'
               )}
             </button>
+          </div>
+        </div>
+      ) : (
+        /* Zero-state Fleet Operations Command Console */
+        <div
+          style={{ width: isPanelMaximized ? '100%' : `${100 - splitPercent}%`, transition: isDragging ? 'none' : 'width 300ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+          className="flex flex-col bg-[#F8FAFC] overflow-y-auto h-full flex-1 animate-in fade-in duration-200"
+        >
+          {/* Header */}
+          <div className="p-4 sm:p-5 border-b border-slate-200 bg-white flex items-center justify-between flex-shrink-0">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700">
+                  <Icon name="dashboard" className="w-5 h-5" />
+                </span>
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                  Fleet Operations Command Center
+                </h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Tenant Lifecycle Management · Reverse Proxy Microservices · WAHA Ingress Gateways
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleBroadcastSync}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition shadow-xs"
+                title="Broadcast OTA push sync across all active customer instances"
+              >
+                <Icon name="refresh" className="w-3.5 h-3.5 text-emerald-600" />
+                <span>OTA Fleet Sync</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenCreateWizard}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-bold rounded-lg shadow-sm transition"
+              >
+                <Icon name="plus" className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Launch Instance</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="p-5 sm:p-6 space-y-6 flex-1">
+            {/* KPI Telemetry Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+                  <span>Total Deployed</span>
+                  <span className="p-1 rounded bg-slate-100 text-slate-700"><Icon name="users" className="w-3.5 h-3.5" /></span>
+                </div>
+                <div className="text-2xl font-black text-slate-900">{fleetStats.total}</div>
+                <div className="text-[11px] text-slate-500 mt-1">Managed client instances</div>
+              </div>
+
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+                  <span>Active Production</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+                <div className="text-2xl font-black text-emerald-700">{fleetStats.active}</div>
+                <div className="text-[11px] text-emerald-600 mt-1">Running normally with valid licenses</div>
+              </div>
+
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs cursor-pointer hover:border-amber-300 transition" onClick={() => setStatusFilter('EXPIRING')}>
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+                  <span>Expiring (≤ 7 Days)</span>
+                  <span className="p-1 rounded bg-amber-50 text-amber-700"><Icon name="clock" className="w-3.5 h-3.5" /></span>
+                </div>
+                <div className="text-2xl font-black text-amber-700">{fleetStats.expiring}</div>
+                <div className="text-[11px] text-amber-600 mt-1">Requires renewal or invoice</div>
+              </div>
+
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs cursor-pointer hover:border-purple-300 transition" onClick={() => setStatusFilter('TRIAL')}>
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+                  <span>Trial Sandboxes</span>
+                  <span className="p-1 rounded bg-purple-50 text-purple-700">🧪</span>
+                </div>
+                <div className="text-2xl font-black text-purple-700">{fleetStats.trial}</div>
+                <div className="text-[11px] text-purple-600 mt-1">Ready for 1-click production upgrade</div>
+              </div>
+            </div>
+
+            {/* Architecture Banner */}
+            <div className="p-4 bg-gradient-to-r from-slate-900 to-indigo-950 rounded-xl text-white shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-indigo-300 uppercase">
+                  <span>🐳 Cloudflare Tunnel &amp; WAHA Ingress Mesh</span>
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px]">Zero-Trust Secure</span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1 max-w-xl">
+                  WAHA gateways and tunnel routing parameters are securely encapsulated at the Renic Soft HQ layer. End-client dashboards communicate via isolated API tokens without accessing underlying cluster credentials.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  to="/applications"
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-xs font-bold text-white transition"
+                >
+                  Gateway Hub ↗
+                </Link>
+              </div>
+            </div>
+
+            {/* Inspection Selector Empty State */}
+            <div className="p-8 bg-white rounded-xl border border-slate-200 shadow-xs text-center flex flex-col items-center justify-center space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <Icon name="license" className="w-7 h-7" />
+              </div>
+              <div className="max-w-md">
+                <h3 className="text-base font-bold text-slate-900">Select an Instance to Inspect</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Click any customer instance from the fleet list on the left to configure license validity, screen permissions, OAuth secrets, local dev routing, or trigger emergency lockdown.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full max-w-lg pt-2 text-left">
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/80">
+                  <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <Icon name="key" className="w-3.5 h-3.5 text-indigo-600" /> OAuth 2.0 Credentials
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Automated Client ID &amp; Secret machine pairing.</div>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/80">
+                  <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <Icon name="shield" className="w-3.5 h-3.5 text-emerald-600" /> Feature Governance
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Solution mode presets &amp; granular screen controls.</div>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/80">
+                  <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <Icon name="lock" className="w-3.5 h-3.5 text-rose-600" /> Anti-Tamper Lockdown
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">1-click emergency kill-switch for overdue accounts.</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -47,7 +47,7 @@ export default function ApplicationHub() {
   const [savingGateway, setSavingGateway] = useState(false);
   const [activeTab, setActiveTab] = useState('customers'); // 'customers' | 'features' | 'edit'
   const [isPanelMaximized, setIsPanelMaximized] = useState(false);
-  const [splitPercent, setSplitPercent] = useState(30);
+  const [splitPercent, setSplitPercent] = useState(38);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef(null);
 
@@ -767,7 +767,7 @@ export default function ApplicationHub() {
       {/* ============ LEFT COLUMN: APPLICATIONS LIST ============ */}
       {!isPanelMaximized && (
         <div
-          style={{ width: isDetailOpen ? `${splitPercent}%` : '100%', transition: isDragging ? 'none' : 'width 200ms ease' }}
+          style={{ width: `${splitPercent}%`, transition: isDragging ? 'none' : 'width 200ms ease' }}
           className="flex flex-col bg-white border-r border-slate-200 overflow-hidden flex-shrink-0"
         >
           {/* Top Control Bar */}
@@ -901,7 +901,7 @@ export default function ApplicationHub() {
       )}
 
       {/* Draggable Resizer */}
-      {isDetailOpen && !isPanelMaximized && (
+      {!isPanelMaximized && (
         <SplitDivider isDragging={isDragging} onMouseDown={() => setIsDragging(true)} />
       )}
 
@@ -1816,7 +1816,107 @@ export default function ApplicationHub() {
             </div>
           </div>
         </div>
-      ) : null}
+      ) : (
+        /* Zero-state Application Hub Console */
+        <div
+          style={{ width: `${100 - splitPercent}%`, transition: isDragging ? 'none' : 'width 200ms ease' }}
+          className="flex flex-col bg-[#F8FAFC] overflow-y-auto h-full flex-1 animate-in fade-in duration-200"
+        >
+          {/* Header */}
+          <div className="p-4 sm:p-5 border-b border-slate-200 bg-white flex items-center justify-between flex-shrink-0">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700">
+                  <Icon name="network" className="w-5 h-5" />
+                </span>
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                  Application Registry &amp; Microservices Studio
+                </h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Multi-Tenant Microservices · Screen Route Mappings · WAHA Gateway &amp; Tunnel Infrastructure
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleOpenCreate}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#4F46E5] hover:bg-[#4338CA] text-white text-xs font-bold rounded-lg shadow-sm transition"
+            >
+              <Icon name="plus" className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Register Application</span>
+            </button>
+          </div>
+
+          <div className="p-5 sm:p-6 space-y-6 flex-1">
+            {/* KPI Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+                  <span>Registered Apps</span>
+                  <span className="p-1 rounded bg-indigo-50 text-indigo-700"><Icon name="network" className="w-3.5 h-3.5" /></span>
+                </div>
+                <div className="text-2xl font-black text-slate-900">{apps.length}</div>
+                <div className="text-[11px] text-slate-500 mt-1">Microservices registered in HQ</div>
+              </div>
+
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+                  <span>Connected Tenants</span>
+                  <span className="p-1 rounded bg-emerald-50 text-emerald-700"><Icon name="users" className="w-3.5 h-3.5" /></span>
+                </div>
+                <div className="text-2xl font-black text-emerald-700">{clients.length}</div>
+                <div className="text-[11px] text-emerald-600 mt-1">Active customer databases</div>
+              </div>
+
+              <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-xs">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold mb-1">
+                  <span>Feature Mappings</span>
+                  <span className="p-1 rounded bg-amber-50 text-amber-700"><Icon name="shield" className="w-3.5 h-3.5" /></span>
+                </div>
+                <div className="text-2xl font-black text-slate-900">
+                  {apps.reduce((sum, a) => sum + (a.featureMappings?.length || 0), 0)}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">Granular screen modules</div>
+              </div>
+            </div>
+
+            {/* Selection Prompt */}
+            <div className="p-8 bg-white rounded-xl border border-slate-200 shadow-xs text-center flex flex-col items-center justify-center space-y-4">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <Icon name="network" className="w-7 h-7" />
+              </div>
+              <div className="max-w-md">
+                <h3 className="text-base font-bold text-slate-900">Select an Application to Manage</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Click any application in the left registry to configure its feature keys, dynamic screen permissions, solution modes, and WAHA gateway infrastructure.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full max-w-lg pt-2 text-left">
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/80">
+                  <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <Icon name="gitBranch" className="w-3.5 h-3.5 text-indigo-600" /> Git Sync &amp; Extract
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Automated screen extraction from React code.</div>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/80">
+                  <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <Icon name="whatsapp" className="w-3.5 h-3.5 text-emerald-600" /> Gateway &amp; Tunnel
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Centralized Cloudflare and WAHA engine.</div>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200/80">
+                  <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <Icon name="users" className="w-3.5 h-3.5 text-amber-600" /> Assigned Tenants
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">Inspect client instances bound to app.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Screen Add / Edit Modal */}
       {screenModalOpen && (
