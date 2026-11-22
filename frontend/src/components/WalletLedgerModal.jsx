@@ -38,9 +38,31 @@ export default function WalletLedgerModal({ isOpen, onClose, client, onWalletUpd
   const [newRateInput, setNewRateInput] = useState('0.90');
   const [submittingRate, setSubmittingRate] = useState(false);
 
+  // Tabs & Telemetry / Offers Engine State
+  const [activeTab, setActiveTab] = useState('LEDGER'); // 'LEDGER' | 'OFFERS'
+  const [telemetryData, setTelemetryData] = useState(null);
+  const [loadingTelemetry, setLoadingTelemetry] = useState(false);
+  const [applyingOfferId, setApplyingOfferId] = useState(null);
+  const [copiedDraftId, setCopiedDraftId] = useState(null);
+
   // Bypass Toggle State
   const [togglingBypass, setTogglingBypass] = useState(false);
   const [isFullWidth, setIsFullWidth] = useState(true);
+
+  const fetchTelemetry = useCallback(async () => {
+    if (!client?._id) return;
+    try {
+      setLoadingTelemetry(true);
+      const res = await api.get(`/wallet/${client._id}/usage-analytics`);
+      if (res.data?.success) {
+        setTelemetryData(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch usage analytics', err);
+    } finally {
+      setLoadingTelemetry(false);
+    }
+  }, [client?._id]);
 
   const fetchLedger = useCallback(async (page = 1) => {
     if (!client?._id) return;
@@ -69,8 +91,48 @@ export default function WalletLedgerModal({ isOpen, onClose, client, onWalletUpd
   useEffect(() => {
     if (isOpen && client?._id) {
       fetchLedger(1);
+      fetchTelemetry();
     }
-  }, [isOpen, client?._id, fetchLedger]);
+  }, [isOpen, client?._id, fetchLedger, fetchTelemetry]);
+
+  // Handle Apply Promotional Offer
+  const handleApplyOffer = async (offer) => {
+    if (!offer) return;
+    try {
+      setApplyingOfferId(offer.id);
+      const res = await api.post(`/wallet/${client._id}/apply-offer`, {
+        offerId: offer.id,
+        newRate: offer.targetRate,
+        bonusAmount: offer.bonusCredits ? Number((offer.bonusCredits * (offer.targetRate || wallet?.messageRate || 0.90)).toFixed(2)) : 0,
+        description: `${offer.title} (${offer.badge})`,
+        actor: {
+          userId: user?._id || 'SUPER_ADMIN',
+          name: user?.name || 'Super Admin',
+          mobile: user?.mobile || '9345578103',
+          role: 'SUPER_ADMIN'
+        }
+      });
+      if (res.data?.success) {
+        showSnackbar(res.data.message, 'success');
+        fetchLedger(1);
+        fetchTelemetry();
+        if (onWalletUpdated) onWalletUpdated();
+      }
+    } catch (err) {
+      showSnackbar(err.response?.data?.message || 'Failed to apply promotional offer', 'error');
+    } finally {
+      setApplyingOfferId(null);
+    }
+  };
+
+  // Handle Copy Pitch Draft
+  const handleCopyDraft = (offer) => {
+    if (!offer?.suggestedDraft) return;
+    navigator.clipboard.writeText(offer.suggestedDraft);
+    setCopiedDraftId(offer.id);
+    showSnackbar('Copied WhatsApp message pitch to clipboard!', 'success');
+    setTimeout(() => setCopiedDraftId(null), 3500);
+  };
 
   // Handle Recharge Submit
   const handleRechargeSubmit = async (e) => {
@@ -301,6 +363,44 @@ export default function WalletLedgerModal({ isOpen, onClose, client, onWalletUpd
           </div>
         </div>
 
+        {/* Studio Tabs Navigation */}
+        <div className="flex items-center gap-2 px-5 py-2.5 bg-slate-100/90 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => setActiveTab('LEDGER')}
+            className={`px-4 py-2 text-xs font-bold rounded-lg transition flex items-center gap-2 ${
+              activeTab === 'LEDGER'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200 dark:border-slate-700'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>📋</span> Transaction Audit Ledger
+            <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono">
+              {pagination.total || 0}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('OFFERS');
+              fetchTelemetry();
+            }}
+            className={`px-4 py-2 text-xs font-bold rounded-lg transition flex items-center gap-2 ${
+              activeTab === 'OFFERS'
+                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-slate-700'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>📊</span> Client Usage Velocity & Smart Offers Engine
+            {telemetryData?.offers?.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500 text-white animate-pulse">
+                {telemetryData.offers.length} Offers
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* Studio Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           
@@ -407,8 +507,11 @@ export default function WalletLedgerModal({ isOpen, onClose, client, onWalletUpd
 
           </div>
 
-          {/* Super Admin Control Bar & Action Buttons */}
-          <div className="p-4 rounded-xl border border-indigo-200/60 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-indigo-950/20 flex flex-wrap items-center justify-between gap-3">
+          {/* TAB 1: LEDGER VIEW */}
+          {activeTab === 'LEDGER' && (
+            <div className="space-y-5">
+              {/* Super Admin Control Bar & Action Buttons */}
+              <div className="p-4 rounded-xl border border-indigo-200/60 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-indigo-950/20 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-indigo-600 text-white">
                 <Icon name="key" className="w-5 h-5" />
@@ -632,6 +735,277 @@ export default function WalletLedgerModal({ isOpen, onClose, client, onWalletUpd
                 >
                   Next
                 </button>
+              </div>
+            </div>
+          )}
+            </div>
+          )}
+
+          {/* TAB 2: CLIENT USAGE VELOCITY & SMART OFFERS ENGINE */}
+          {activeTab === 'OFFERS' && (
+            <div className="space-y-6">
+              {/* Velocity Tier Status Card */}
+              <div className="p-4 rounded-xl border border-indigo-200 dark:border-indigo-900 bg-gradient-to-r from-indigo-50/50 via-white to-purple-50/40 dark:from-indigo-950/30 dark:via-slate-900 dark:to-purple-950/20 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-2xl border border-indigo-500/20">
+                    🚀
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                        Sending Velocity Tier:
+                      </h3>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-black tracking-wide uppercase ${
+                        telemetryData?.telemetry?.velocityTier === 'HIGH_VOLUME_VIP'
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300'
+                          : telemetryData?.telemetry?.velocityTier === 'GROWTH_ACCELERATOR'
+                          ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300'
+                          : telemetryData?.telemetry?.velocityTier === 'WINBACK_RENEWAL'
+                          ? 'bg-rose-100 text-rose-900 border border-rose-300 dark:bg-rose-950/60 dark:text-rose-300'
+                          : 'bg-blue-100 text-blue-900 border border-blue-300 dark:bg-blue-950/60 dark:text-blue-300'
+                      }`}>
+                        {telemetryData?.telemetry?.velocityTier || 'EVALUATING VELOCITY...'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Client: <strong>{client?.name}</strong> • Customer Code: <strong className="font-mono">{client?.customerCode}</strong> • Contact: <strong>{telemetryData?.client?.ownerMobile || client?.ownerMobile || client?.contact || 'N/A'}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={fetchTelemetry}
+                    disabled={loadingTelemetry}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition"
+                  >
+                    <Icon name="refresh" className={`w-3.5 h-3.5 ${loadingTelemetry ? 'animate-spin' : ''}`} />
+                    Refresh Velocity
+                  </button>
+                </div>
+              </div>
+
+              {/* Interval Breakdown Grid (Day / Week / Month / All-Time) */}
+              <div>
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                  <span>⏱️</span> Multi-Interval Velocity Breakdown
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* Today */}
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
+                      <span>Today (24h)</span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="text-[11px] text-slate-500">Messages Sent</div>
+                        <div className="text-xl font-black text-slate-900 dark:text-white">
+                          {(telemetryData?.telemetry?.messages?.today || 0).toLocaleString('en-IN')}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-500">Amount Spent:</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                          ₹{(telemetryData?.telemetry?.spent?.today || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500">Audience Reached:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {(telemetryData?.telemetry?.customers?.today || 0)} customers
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* This Week */}
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
+                      <span>This Week (7 Days)</span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="text-[11px] text-slate-500">Messages Sent</div>
+                        <div className="text-xl font-black text-slate-900 dark:text-white">
+                          {(telemetryData?.telemetry?.messages?.thisWeek || 0).toLocaleString('en-IN')}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-500">Amount Spent:</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                          ₹{(telemetryData?.telemetry?.spent?.thisWeek || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500">Audience Reached:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {(telemetryData?.telemetry?.customers?.thisWeek || 0)} customers
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* This Month */}
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
+                      <span>This Month (30 Days)</span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="text-[11px] text-slate-500">Messages Sent</div>
+                        <div className="text-xl font-black text-slate-900 dark:text-white">
+                          {(telemetryData?.telemetry?.messages?.thisMonth || 0).toLocaleString('en-IN')}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-500">Amount Spent:</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                          ₹{(telemetryData?.telemetry?.spent?.thisMonth || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500">Audience Reached:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {(telemetryData?.telemetry?.customers?.thisMonth || 0)} customers
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* All-Time */}
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
+                      <span>All-Time Total</span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="text-[11px] text-slate-500">Lifetime Sent</div>
+                        <div className="text-xl font-black text-slate-900 dark:text-white">
+                          {(telemetryData?.telemetry?.messages?.allTime || 0).toLocaleString('en-IN')}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-slate-500">Lifetime Spent:</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                          ₹{(telemetryData?.telemetry?.spent?.allTime || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500">Total Contacts:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {(telemetryData?.telemetry?.customers?.totalContacts || 0)} contacts
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Synthesized Smart Promotional Offers Section */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>🎁</span> Synthesized Promotional Offers & Volume Incentives
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Smart offers generated based on this client's real-time velocity. Apply in 1 click to update their rate and bonus credits, or copy the pre-formatted WhatsApp pitch.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {telemetryData?.offers?.length > 0 ? (
+                    telemetryData.offers.map((offer) => (
+                      <div
+                        key={offer.id}
+                        className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-400/50 transition flex flex-col justify-between space-y-3 shadow-sm"
+                      >
+                        <div>
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 uppercase tracking-wider mb-1">
+                                {offer.badge}
+                              </span>
+                              <h5 className="text-sm font-bold text-slate-900 dark:text-white">
+                                {offer.title}
+                              </h5>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                                ₹{offer.targetRate}/msg
+                              </div>
+                              <div className="text-[10px] text-slate-400 line-through">
+                                ₹{currentRate}/msg
+                              </div>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
+                            {offer.pitch}
+                          </p>
+
+                          <div className="mt-3 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs space-y-1">
+                            <div className="flex justify-between text-slate-600 dark:text-slate-300">
+                              <span>Bonus Promotional Credits:</span>
+                              <strong className="text-emerald-600 dark:text-emerald-400">+{offer.bonusCredits} Messages</strong>
+                            </div>
+                            <div className="flex justify-between text-slate-600 dark:text-slate-300">
+                              <span>Min. Qualifying Recharge:</span>
+                              <strong>₹{Number(offer.minRechargeAmount).toLocaleString('en-IN')}</strong>
+                            </div>
+                          </div>
+
+                          {/* Pitch Draft Box */}
+                          <div className="mt-3">
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                              <span>Suggested WhatsApp Pitch:</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyDraft(offer)}
+                                className="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold text-[11px]"
+                              >
+                                {copiedDraftId === offer.id ? '✓ Copied!' : '📋 Copy Draft'}
+                              </button>
+                            </div>
+                            <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 font-sans text-xs text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 select-all leading-relaxed">
+                              {offer.suggestedDraft}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleApplyOffer(offer)}
+                            disabled={applyingOfferId === offer.id}
+                            className="flex-1 py-2 px-3 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          >
+                            <span>⚡</span>
+                            {applyingOfferId === offer.id ? 'Applying Offer...' : `Apply ₹${offer.targetRate}/msg & +${offer.bonusCredits} Free msgs`}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyDraft(offer)}
+                            className="py-2 px-3 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                            title="Copy WhatsApp pitch to send to client"
+                          >
+                            📱 Copy Pitch
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-2 p-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-slate-400 text-xs">
+                      Loading promotional offers for this client...
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

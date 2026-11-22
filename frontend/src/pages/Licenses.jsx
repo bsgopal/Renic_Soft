@@ -1225,6 +1225,11 @@ export default function Licenses() {
                               ) : (
                                 <span>
                                   ₹{Number(c.wallet?.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })} ({Math.floor((c.wallet?.balance || 0) / (c.wallet?.messageRate || 0.90)).toLocaleString('en-IN')} msgs @ ₹{c.wallet?.messageRate || 0.90}/msg)
+                                  {Number(c.wallet?.totalSpent || 0) > 0 && (
+                                    <span className="opacity-80 ml-1.5 text-slate-500 dark:text-slate-400 font-medium">
+                                      • Spent: ₹{Number(c.wallet.totalSpent).toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+                                    </span>
+                                  )}
                                 </span>
                               )}
                             </button>
